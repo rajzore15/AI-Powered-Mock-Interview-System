@@ -2,15 +2,20 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function InterviewSetup() {
-  const navigate = useNavigate();
-
   const [role, setRole] = useState("");
   const [experience, setExperience] = useState("");
   const [skill, setSkill] = useState("");
   const [difficulty, setDifficulty] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (isLoading) return;
+
+    setIsLoading(true);
 
     const interviewData = {
       role,
@@ -19,14 +24,58 @@ function InterviewSetup() {
       difficulty,
     };
 
-    // Save interview configuration
-    localStorage.setItem(
-      "interviewConfig",
-      JSON.stringify(interviewData)
-    );
+    console.log("Sending interview data:", interviewData);
 
-    // Move to Interview Room
-    navigate("/interview-room");
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:5000/api/generate-question",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(interviewData),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log("Backend response:", data);
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            data.details ||
+            "Failed to generate interview question"
+        );
+      }
+
+      if (!data.question) {
+        throw new Error("No question received from backend");
+      }
+
+      console.log("Generated question:", data.question);
+
+      // Go to Interview Room with all interview information
+      navigate("/interview-room", {
+        state: {
+          role,
+          experience,
+          skill,
+          difficulty,
+          question: data.question,
+        },
+      });
+    } catch (error) {
+      console.error("Interview setup error:", error);
+
+      alert(
+        error.message ||
+          "Unable to generate interview question. Please check that the backend is running."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -42,7 +91,6 @@ function InterviewSetup() {
         <form onSubmit={handleSubmit}>
 
           {/* Job Role */}
-
           <label>Job Role</label>
 
           <select
@@ -50,9 +98,7 @@ function InterviewSetup() {
             onChange={(e) => setRole(e.target.value)}
             required
           >
-            <option value="">
-              Select Job Role
-            </option>
+            <option value="">Select Job Role</option>
 
             <option value="Python Developer">
               Python Developer
@@ -75,9 +121,7 @@ function InterviewSetup() {
             </option>
           </select>
 
-
           {/* Experience */}
-
           <label>Experience Level</label>
 
           <select
@@ -85,9 +129,7 @@ function InterviewSetup() {
             onChange={(e) => setExperience(e.target.value)}
             required
           >
-            <option value="">
-              Select Experience
-            </option>
+            <option value="">Select Experience</option>
 
             <option value="Fresher">
               Fresher
@@ -106,9 +148,7 @@ function InterviewSetup() {
             </option>
           </select>
 
-
-          {/* Primary Skill */}
-
+          {/* Skill */}
           <label>Primary Skill</label>
 
           <select
@@ -116,9 +156,7 @@ function InterviewSetup() {
             onChange={(e) => setSkill(e.target.value)}
             required
           >
-            <option value="">
-              Select Skill
-            </option>
+            <option value="">Select Skill</option>
 
             <option value="Python">
               Python
@@ -141,9 +179,7 @@ function InterviewSetup() {
             </option>
           </select>
 
-
           {/* Difficulty */}
-
           <label>Difficulty</label>
 
           <select
@@ -151,9 +187,7 @@ function InterviewSetup() {
             onChange={(e) => setDifficulty(e.target.value)}
             required
           >
-            <option value="">
-              Select Difficulty
-            </option>
+            <option value="">Select Difficulty</option>
 
             <option value="Easy">
               Easy
@@ -168,11 +202,14 @@ function InterviewSetup() {
             </option>
           </select>
 
-
-          {/* Continue */}
-
-          <button type="submit">
-            Continue
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={isLoading}
+          >
+            {isLoading
+              ? "Generating Question..."
+              : "Start AI Interview"}
           </button>
 
         </form>

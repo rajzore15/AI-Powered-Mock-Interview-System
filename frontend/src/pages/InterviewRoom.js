@@ -1,43 +1,56 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
 
 function InterviewRoom() {
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioURL, setAudioURL] = useState("");
-  const [transcript, setTranscript] = useState("");
-  const [status, setStatus] = useState("");
-  const [error, setError] = useState("");
+  const location = useLocation();
 
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
+  // Get interview data from InterviewSetup
+  const interviewData = location.state || {};
+
+  const role = interviewData.role || "Python Developer";
+  const experience = interviewData.experience || "Fresher";
+  const skill = interviewData.skill || "Python";
+  const difficulty = interviewData.difficulty || "Easy";
+
+  const [currentQuestion, setCurrentQuestion] = useState(
+    interviewData.question ||
+      "Tell me about yourself and your background."
+  );
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioURL, setAudioURL] = useState(null);
+  const [transcript, setTranscript] = useState("");
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+
+  // ==============================
+  // START RECORDING
+  // ==============================
 
   const startRecording = async () => {
     try {
-      setError("");
-      setStatus("");
-      setTranscript("");
-      setAudioURL("");
+      const stream =
+        await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
+      const recorder = new MediaRecorder(stream);
 
-      const mediaRecorder = new MediaRecorder(stream);
+      const audioChunks = [];
 
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
+      recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+          audioChunks.push(event.data);
         }
       };
 
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, {
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, {
           type: "audio/webm",
         });
 
         const url = URL.createObjectURL(audioBlob);
+
         setAudioURL(url);
 
         stream.getTracks().forEach((track) => {
@@ -47,26 +60,33 @@ function InterviewRoom() {
         await transcribeAudio(audioBlob);
       };
 
-      mediaRecorder.start();
+      recorder.start();
 
+      setMediaRecorder(recorder);
       setIsRecording(true);
-      setStatus("🔴 Recording...");
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error("Microphone error:", error);
 
-      setError(
-        "Microphone permission was denied or the microphone is unavailable."
+      alert(
+        "Please allow microphone access and try again."
       );
     }
   };
 
+  // ==============================
+  // STOP RECORDING
+  // ==============================
+
   const stopRecording = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
+    if (mediaRecorder) {
+      mediaRecorder.stop();
       setIsRecording(false);
-      setStatus("Processing your answer...");
     }
   };
+
+  // ==============================
+  // TRANSCRIBE AUDIO
+  // ==============================
 
   const transcribeAudio = async (audioBlob) => {
     try {
@@ -75,7 +95,7 @@ function InterviewRoom() {
       formData.append(
         "audio",
         audioBlob,
-        "interview-answer.webm"
+        "answer.webm"
       );
 
       const response = await fetch(
@@ -94,17 +114,87 @@ function InterviewRoom() {
         );
       }
 
-      console.log("Whisper response:", data);
+      console.log(
+        "Transcript:",
+        data.transcript
+      );
 
       setTranscript(data.transcript);
-      setStatus("✅ Answer transcribed successfully!");
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(
+        "Transcription error:",
+        error
+      );
 
-      setStatus("");
-      setError(
+      alert(
         "Unable to transcribe your answer."
       );
+    }
+  };
+
+  // ==============================
+  // NEXT QUESTION
+  // ==============================
+
+  const nextQuestion = async () => {
+    if (isLoading) return;
+
+    setIsLoading(true);
+
+    const requestData = {
+      role: role,
+      experience: experience,
+      skill: skill,
+      difficulty: difficulty,
+    };
+
+    console.log(
+      "Sending interview data:",
+      requestData
+    );
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:5000/api/generate-question",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestData),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+        "Backend response:",
+        data
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Failed to generate next question"
+        );
+      }
+
+      setCurrentQuestion(data.question);
+
+      setAudioURL(null);
+      setTranscript("");
+    } catch (error) {
+      console.error(
+        "Next question error:",
+        error
+      );
+
+      alert(
+        error.message ||
+          "Unable to generate next question."
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -112,11 +202,16 @@ function InterviewRoom() {
     <div className="interview-room">
 
       <div className="interview-header">
-        <h1>AI Interview Room</h1>
+
+        <h1>
+          AI Interview Room
+        </h1>
 
         <p>
-          Your AI-powered interview is ready to begin.
+          {role} Interview •{" "}
+          {difficulty} Difficulty
         </p>
+
       </div>
 
       <div className="interview-card">
@@ -124,11 +219,11 @@ function InterviewRoom() {
         <div className="question-section">
 
           <span className="question-label">
-            Question 1
+            AI Interview Question
           </span>
 
           <h2>
-            Tell me about yourself and your background.
+            {currentQuestion}
           </h2>
 
         </div>
@@ -144,29 +239,25 @@ function InterviewRoom() {
             </button>
           ) : (
             <button
-              className="record-button"
+              className="record-button recording"
               onClick={stopRecording}
             >
               ⏹ Stop Recording
             </button>
           )}
 
-          {status && (
-            <p>
-              {status}
-            </p>
-          )}
-
-          {error && (
-            <p style={{ color: "red" }}>
-              {error}
-            </p>
-          )}
+          <p>
+            {isRecording
+              ? "Recording your answer..."
+              : "Click the button to record your answer."}
+          </p>
 
           {audioURL && (
-            <div className="audio-preview">
+            <div className="audio-result">
 
-              <p>Your recorded answer:</p>
+              <p>
+                ✅ Answer recorded successfully!
+              </p>
 
               <audio
                 controls
@@ -179,7 +270,9 @@ function InterviewRoom() {
           {transcript && (
             <div className="transcript-section">
 
-              <h3>📝 Your Answer</h3>
+              <h3>
+                Your Answer
+              </h3>
 
               <p>
                 {transcript}
@@ -187,6 +280,20 @@ function InterviewRoom() {
 
             </div>
           )}
+
+        </div>
+
+        <div className="interview-actions">
+
+          <button
+            className="next-button"
+            onClick={nextQuestion}
+            disabled={isLoading}
+          >
+            {isLoading
+              ? "Generating..."
+              : "Next Question →"}
+          </button>
 
         </div>
 

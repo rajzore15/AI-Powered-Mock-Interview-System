@@ -4,15 +4,22 @@ import os
 import uuid
 import whisper
 
+from services.gemini_service import generate_interview_question
+
+
 app = Flask(__name__)
 CORS(app)
+
 
 UPLOAD_FOLDER = "uploads"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-# Load Whisper model
+# ==========================================
+# Load Whisper Model
+# ==========================================
+
 print("Loading Whisper model...")
 
 model = whisper.load_model("base")
@@ -20,27 +27,41 @@ model = whisper.load_model("base")
 print("Whisper model loaded successfully!")
 
 
+# ==========================================
+# Home Route
+# ==========================================
+
 @app.route("/")
 def home():
+
     return jsonify({
         "message": "AI Mock Interview Backend Running"
     })
 
 
+# ==========================================
+# Upload Audio
+# ==========================================
+
 @app.route("/api/upload-audio", methods=["POST"])
 def upload_audio():
 
     if "audio" not in request.files:
+
         return jsonify({
             "error": "No audio file received"
         }), 400
 
+
     audio = request.files["audio"]
 
+
     if audio.filename == "":
+
         return jsonify({
             "error": "No audio file selected"
         }), 400
+
 
     filename = f"{uuid.uuid4()}.webm"
 
@@ -49,28 +70,42 @@ def upload_audio():
         filename
     )
 
+
     audio.save(filepath)
 
+
     return jsonify({
+
         "message": "Audio uploaded successfully",
+
         "filename": filename
+
     })
 
+
+# ==========================================
+# Speech To Text - Whisper
+# ==========================================
 
 @app.route("/api/transcribe", methods=["POST"])
 def transcribe_audio():
 
     if "audio" not in request.files:
+
         return jsonify({
             "error": "No audio file received"
         }), 400
 
+
     audio = request.files["audio"]
 
+
     if audio.filename == "":
+
         return jsonify({
             "error": "No audio file selected"
         }), 400
+
 
     filename = f"{uuid.uuid4()}.webm"
 
@@ -79,41 +114,152 @@ def transcribe_audio():
         filename
     )
 
+
     audio.save(filepath)
+
 
     try:
 
         print("Transcribing audio...")
 
+
         result = model.transcribe(filepath)
+
 
         transcript = result["text"].strip()
 
+
         print("Transcript:", transcript)
 
+
         return jsonify({
+
             "message": "Audio transcribed successfully",
+
             "transcript": transcript
+
         })
+
 
     except Exception as e:
 
         print("Transcription error:", str(e))
 
+
         return jsonify({
+
             "error": "Transcription failed",
+
             "details": str(e)
+
         }), 500
+
 
     finally:
 
-        # Remove temporary audio file
+        # Delete temporary audio file
+
         if os.path.exists(filepath):
+
             os.remove(filepath)
 
 
+# ==========================================
+# Gemini AI - Generate Interview Question
+# ==========================================
+
+@app.route("/api/generate-question", methods=["POST"])
+def generate_question():
+
+    data = request.get_json()
+
+
+    if not data:
+
+        return jsonify({
+
+            "error": "No data received"
+
+        }), 400
+
+
+    role = data.get("role")
+
+    experience = data.get("experience")
+
+    skill = data.get("skill")
+
+    difficulty = data.get("difficulty")
+
+
+    # Validate interview details
+
+    if not all([
+        role,
+        experience,
+        skill,
+        difficulty
+    ]):
+
+        return jsonify({
+
+            "error": "Missing interview details"
+
+        }), 400
+
+
+    try:
+
+        print("Generating interview question...")
+
+
+        question = generate_interview_question(
+
+            role,
+
+            experience,
+
+            skill,
+
+            difficulty
+
+        )
+
+
+        print("Generated question:", question)
+
+
+        return jsonify({
+
+            "question": question
+
+        })
+
+
+    except Exception as e:
+
+        print("Gemini error:", str(e))
+
+
+        return jsonify({
+
+            "error": "Failed to generate interview question",
+
+            "details": str(e)
+
+        }), 500
+
+
+# ==========================================
+# Run Flask Server
+# ==========================================
+
 if __name__ == "__main__":
+
     app.run(
+
         debug=True,
+
         port=5000
+
     )
