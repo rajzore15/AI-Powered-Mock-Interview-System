@@ -1,7 +1,13 @@
 import os
 import time
+
 from google import genai
 from dotenv import load_dotenv
+
+
+# ==========================================
+# Load Environment Variables
+# ==========================================
 
 load_dotenv()
 
@@ -10,8 +16,12 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=API_KEY)
 
 
-# Fallback questions
+# ==========================================
+# Fallback Questions
+# ==========================================
+
 FALLBACK_QUESTIONS = {
+
     "Python": [
         "What is the difference between a list and a tuple in Python?",
         "What are Python decorators and where would you use them?",
@@ -57,10 +67,11 @@ FALLBACK_QUESTIONS = {
 }
 
 
+# ==========================================
+# Get Fallback Question
+# ==========================================
+
 def get_fallback_question(skill):
-    """
-    Return a predefined question if Gemini quota is unavailable.
-    """
 
     questions = FALLBACK_QUESTIONS.get(
         skill,
@@ -71,11 +82,14 @@ def get_fallback_question(skill):
         ]
     )
 
-    # Select a question based on current time
     index = int(time.time()) % len(questions)
 
     return questions[index]
 
+
+# ==========================================
+# Generate Interview Question
+# ==========================================
 
 def generate_interview_question(
     role,
@@ -83,12 +97,6 @@ def generate_interview_question(
     skill,
     difficulty
 ):
-    """
-    Generate an interview question using Gemini.
-
-    If Gemini quota is exceeded or the API fails,
-    return a fallback question instead.
-    """
 
     prompt = f"""
 You are an AI technical interviewer.
@@ -128,7 +136,6 @@ Requirements:
 
         print("Gemini error:", error_message)
 
-        # Handle Gemini quota / rate limit
         if (
             "429" in error_message
             or "RESOURCE_EXHAUSTED" in error_message
@@ -152,3 +159,87 @@ Requirements:
         print("Fallback question:", question)
 
         return question
+
+
+# ==========================================
+# AI Answer Evaluation - DAY 4
+# ==========================================
+
+def evaluate_answer(question, answer):
+
+    prompt = f"""
+You are an experienced technical interviewer.
+
+Evaluate the candidate's answer to the interview question below.
+
+Interview Question:
+{question}
+
+Candidate's Answer:
+{answer}
+
+Evaluate based on:
+1. Correctness
+2. Relevance
+3. Technical understanding
+4. Clarity
+
+Return ONLY valid JSON in exactly this format:
+
+{{
+    "score": 7,
+    "feedback": "Short overall feedback",
+    "strengths": "What the candidate did well",
+    "weaknesses": "What could be improved",
+    "improvement": "Specific suggestion to improve the answer"
+}}
+
+Rules:
+- Score must be a number from 0 to 10.
+- Keep each response concise.
+- Do not provide the correct answer.
+- Do not add markdown.
+- Do not add ```json.
+"""
+
+    try:
+
+        print("Evaluating candidate answer...")
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+
+        evaluation_text = response.text.strip()
+
+        print("Raw evaluation:")
+        print(evaluation_text)
+
+        # Remove markdown if Gemini adds it
+        evaluation_text = evaluation_text.replace(
+            "```json", ""
+        ).replace(
+            "```", ""
+        ).strip()
+
+        import json
+
+        evaluation = json.loads(evaluation_text)
+
+        print("Evaluation parsed successfully:")
+        print(evaluation)
+
+        return evaluation
+
+    except Exception as e:
+
+        print("Gemini evaluation error:", str(e))
+
+        return {
+            "score": "N/A",
+            "feedback": "Unable to evaluate the answer right now.",
+            "strengths": "Evaluation service was unavailable.",
+            "weaknesses": "Evaluation could not be completed.",
+            "improvement": "Please try submitting the answer again."
+        }

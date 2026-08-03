@@ -4,7 +4,10 @@ import { useLocation } from "react-router-dom";
 function InterviewRoom() {
   const location = useLocation();
 
-  // Get interview data from InterviewSetup
+  // ==============================
+  // INTERVIEW DATA
+  // ==============================
+
   const interviewData = location.state || {};
 
   const role = interviewData.role || "Python Developer";
@@ -17,11 +20,24 @@ function InterviewRoom() {
       "Tell me about yourself and your background."
   );
 
+  // ==============================
+  // STATES
+  // ==============================
+
   const [isLoading, setIsLoading] = useState(false);
+
   const [isRecording, setIsRecording] = useState(false);
+
   const [audioURL, setAudioURL] = useState(null);
+
   const [transcript, setTranscript] = useState("");
+
   const [mediaRecorder, setMediaRecorder] = useState(null);
+
+  // Day 4 - Evaluation
+  const [evaluation, setEvaluation] = useState("");
+
+  const [isEvaluating, setIsEvaluating] = useState(false);
 
   // ==============================
   // START RECORDING
@@ -63,7 +79,11 @@ function InterviewRoom() {
       recorder.start();
 
       setMediaRecorder(recorder);
+
       setIsRecording(true);
+
+      // Clear old evaluation
+      setEvaluation("");
     } catch (error) {
       console.error("Microphone error:", error);
 
@@ -80,6 +100,7 @@ function InterviewRoom() {
   const stopRecording = () => {
     if (mediaRecorder) {
       mediaRecorder.stop();
+
       setIsRecording(false);
     }
   };
@@ -133,6 +154,70 @@ function InterviewRoom() {
   };
 
   // ==============================
+  // EVALUATE ANSWER - DAY 4
+  // ==============================
+
+  const evaluateCandidateAnswer = async () => {
+    if (!transcript) {
+      alert(
+        "Please record your answer first."
+      );
+
+      return;
+    }
+
+    if (isEvaluating) return;
+
+    setIsEvaluating(true);
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:5000/api/evaluate-answer",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            question: currentQuestion,
+            answer: transcript,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+        "Evaluation response:",
+        data
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Failed to evaluate answer"
+        );
+      }
+
+      setEvaluation(data.evaluation);
+    } catch (error) {
+      console.error(
+        "Evaluation error:",
+        error
+      );
+
+      alert(
+        error.message ||
+          "Unable to evaluate your answer."
+      );
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+  // ==============================
   // NEXT QUESTION
   // ==============================
 
@@ -158,9 +243,11 @@ function InterviewRoom() {
         "http://127.0.0.1:5000/api/generate-question",
         {
           method: "POST",
+
           headers: {
             "Content-Type": "application/json",
           },
+
           body: JSON.stringify(requestData),
         }
       );
@@ -181,8 +268,13 @@ function InterviewRoom() {
 
       setCurrentQuestion(data.question);
 
+      // Clear previous answer
       setAudioURL(null);
+
       setTranscript("");
+
+      // Clear previous evaluation
+      setEvaluation("");
     } catch (error) {
       console.error(
         "Next question error:",
@@ -197,6 +289,10 @@ function InterviewRoom() {
       setIsLoading(false);
     }
   };
+
+  // ==============================
+  // UI
+  // ==============================
 
   return (
     <div className="interview-room">
@@ -216,6 +312,8 @@ function InterviewRoom() {
 
       <div className="interview-card">
 
+        {/* QUESTION */}
+
         <div className="question-section">
 
           <span className="question-label">
@@ -227,6 +325,8 @@ function InterviewRoom() {
           </h2>
 
         </div>
+
+        {/* RECORDING */}
 
         <div className="voice-section">
 
@@ -252,6 +352,8 @@ function InterviewRoom() {
               : "Click the button to record your answer."}
           </p>
 
+          {/* AUDIO */}
+
           {audioURL && (
             <div className="audio-result">
 
@@ -267,6 +369,8 @@ function InterviewRoom() {
             </div>
           )}
 
+          {/* TRANSCRIPT */}
+
           {transcript && (
             <div className="transcript-section">
 
@@ -281,7 +385,76 @@ function InterviewRoom() {
             </div>
           )}
 
+          {/* EVALUATE BUTTON */}
+
+          {transcript && (
+            <div className="evaluation-action">
+
+              <button
+                className="evaluate-button"
+                onClick={
+                  evaluateCandidateAnswer
+                }
+                disabled={isEvaluating}
+              >
+                {isEvaluating
+                  ? "Evaluating..."
+                  : "🤖 Evaluate My Answer"}
+              </button>
+
+            </div>
+          )}
+
+          {/* EVALUATION RESULT */}
+
+                      {evaluation && (
+              <div className="evaluation-section">
+
+                <h3>🤖 AI Evaluation</h3>
+
+                <div className="evaluation-score">
+                  <strong>Score</strong>
+                  <span>{evaluation.score || "N/A"}/10</span>
+                </div>
+
+                <div className="evaluation-content">
+
+                  <div className="evaluation-box">
+                    <h4>💬 Feedback</h4>
+                    <p>
+                      {evaluation.feedback || "No feedback available."}
+                    </p>
+                  </div>
+
+                  <div className="evaluation-box">
+                    <h4>✅ Strengths</h4>
+                    <p>
+                      {evaluation.strengths || "No strengths provided."}
+                    </p>
+                  </div>
+
+                  <div className="evaluation-box">
+                    <h4>⚠️ Weaknesses</h4>
+                    <p>
+                      {evaluation.weaknesses || "No weaknesses provided."}
+                    </p>
+                  </div>
+
+                  <div className="evaluation-box">
+                    <h4>💡 Improvement</h4>
+                    <p>
+                      {evaluation.improvement ||
+                        "No improvement suggestions available."}
+                    </p>
+                  </div>
+
+                </div>
+
+              </div>
+            )}
         </div>
+
+        {/* NEXT QUESTION */}
 
         <div className="interview-actions">
 
