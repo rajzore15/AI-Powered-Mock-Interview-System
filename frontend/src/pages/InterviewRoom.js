@@ -1,8 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 function InterviewRoom() {
   const location = useLocation();
+
+  const videoRef = useRef(null);
+const [cameraOn, setCameraOn] = useState(false);
+const [cameraStream, setCameraStream] = useState(null);
 
   // ==============================
   // INTERVIEW DATA
@@ -19,6 +23,46 @@ function InterviewRoom() {
     interviewData.question ||
       "Tell me about yourself and your background."
   );
+
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // ==============================
+  // AI VOICE
+  // ==============================
+
+  const speakQuestion = (text) => {
+    if ("speechSynthesis" in window && text) {
+      window.speechSynthesis.cancel();
+
+      const speech = new SpeechSynthesisUtterance(text);
+
+      speech.rate = 0.9;
+      speech.pitch = 1;
+      speech.volume = 1;
+
+      speech.onstart = () => {
+        setIsSpeaking(true);
+      };
+
+      speech.onend = () => {
+        setIsSpeaking(false);
+      };
+
+      speech.onerror = () => {
+        setIsSpeaking(false);
+      };
+
+      speech.oncancel = () => {
+        setIsSpeaking(false);
+      };
+
+      window.speechSynthesis.speak(speech);
+    }
+  };
+
+  useEffect(() => {
+    speakQuestion(currentQuestion);
+  }, [currentQuestion]);
 
   // ==============================
   // STATES
@@ -38,6 +82,42 @@ function InterviewRoom() {
   const [evaluation, setEvaluation] = useState("");
 
   const [isEvaluating, setIsEvaluating] = useState(false);
+
+  // ==============================
+// CAMERA
+// ==============================
+
+const startCamera = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: false,
+    });
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+
+    setCameraStream(stream);
+    setCameraOn(true);
+  } catch (error) {
+    console.error("Camera error:", error);
+    alert("Please allow camera access.");
+  }
+};
+
+const stopCamera = () => {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach((track) => track.stop());
+  }
+
+  if (videoRef.current) {
+    videoRef.current.srcObject = null;
+  }
+
+  setCameraStream(null);
+  setCameraOn(false);
+};
 
   // ==============================
   // START RECORDING
@@ -324,6 +404,10 @@ function InterviewRoom() {
             {currentQuestion}
           </h2>
 
+          {isSpeaking && (
+            <p>🔊 AI is speaking...</p>
+          )}
+
         </div>
 
         {/* RECORDING */}
@@ -453,6 +537,36 @@ function InterviewRoom() {
               </div>
             )}
         </div>
+
+        {/* CAMERA */}
+
+<div className="camera-section">
+
+  <video
+    ref={videoRef}
+    autoPlay
+    muted
+    playsInline
+    className="camera-preview"
+  />
+
+  {!cameraOn ? (
+    <button
+      className="camera-button"
+      onClick={startCamera}
+    >
+      🎥 Turn On Camera
+    </button>
+  ) : (
+    <button
+      className="camera-button"
+      onClick={stopCamera}
+    >
+      📷 Turn Off Camera
+    </button>
+  )}
+
+</div>
 
         {/* NEXT QUESTION */}
 
