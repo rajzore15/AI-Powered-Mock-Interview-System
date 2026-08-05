@@ -528,3 +528,232 @@ body {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* =========================
+   AI INTERVIEWER
+========================= */
+
+.ai-interviewer {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 22px;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, #f8fafc, #eef4ff);
+  border: 1px solid #dbe3f0;
+  border-radius: 14px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+  transition: 0.3s ease;
+}
+
+.ai-avatar {
+  width: 62px;
+  height: 62px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  background: #dbeafe;
+
+  font-size: 34px;
+
+  border: 3px solid #bfdbfe;
+
+  transition: 0.3s ease;
+}
+
+.ai-interviewer-info {
+  flex: 1;
+}
+
+.ai-interviewer-info h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: #111827;
+}
+
+.ai-interviewer-info p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* AI speaking animation */
+
+.ai-speaking {
+  border-color: #93c5fd;
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.12);
+}
+
+.ai-speaking .ai-avatar {
+  transform: scale(1.08);
+
+  box-shadow:
+    0 0 0 5px #dbeafe,
+    0 0 0 10px #eff6ff;
+
+  animation: aiPulse 1.5s infinite;
+}
+
+@keyframes aiPulse {
+
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+
+}
+
+/* =========================
+   REALISTIC AI INTERVIEW LAYOUT
+========================= */
+
+.interview-room {
+  min-height: calc(100vh - 70px);
+  padding: 35px 25px;
+
+ background:
+  radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.18), transparent 35%),
+  radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.15), transparent 35%),
+  #3189b3;
+
+  color: white;
+}
+
+.interview-header {
+  max-width: 1200px;
+  margin: 0 auto 20px;
+  text-align: center;
+}
+
+.interview-header h1 {
+  color: white;
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.interview-header p {
+  color: #aab4c8;
+}
+
+/* Main interview card */
+
+.interview-card {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 25px;
+  background: #506aa3;
+  border: 1px solid #273449;
+  border-radius: 18px;
+  box-shadow: 0 15px 40px rgba(102, 44, 44, 0.35);
+}
+
+/* AI interviewer */
+
+.ai-interviewer {
+  background: hwb(219 18% 41%);
+  border: 1px solid #334155;
+  color: white;
+}
+
+.ai-interviewer-info h3 {
+  color: white;
+}
+
+.ai-interviewer-info p {
+  color: #aab4c8;
+}
+
+/* Question */
+
+.question-section {
+  margin-bottom: 25px;
+}
+
+.question-label {
+  background: #1d4ed8;
+  color: white;
+}
+
+.question-section h2 {
+  color: white;
+  font-size: 24px;
+  line-height: 1.5;
+}
+
+/* Voice section */
+
+.voice-section {
+  background: #2e4c91;
+  border-color: #334155;
+}
+
+.voice-section p {
+  color: #94a3b8;
+}
+
+/* Buttons */
+
+.record-button {
+  background: #2563eb;
+}
+
+.record-button:hover {
+  background: #1d4ed8;
+}
+
+.next-button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 12px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.next-button:hover {
+  background: #1d4ed8;
+}
+
+/* Transcript */
+
+.transcript-section {
+  background: #1e293b;
+  border: 1px solid #334155;
+}
+
+.transcript-section h3 {
+  color: white;
+}
+
+.transcript-section p {
+  color: #cbd5e1;
+}
+
+/* Mobile */
+
+@media (max-width: 700px) {
+
+  .interview-room {
+    padding: 20px 12px;
+  }
+
+  .interview-card {
+    padding: 18px;
+  }
+
+  .question-section h2 {
+    font-size: 20px;
+  }
+
+}

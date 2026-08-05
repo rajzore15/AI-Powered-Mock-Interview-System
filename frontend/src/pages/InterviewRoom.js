@@ -392,6 +392,26 @@ const stopCamera = () => {
 
       <div className="interview-card">
 
+      {/* AI INTERVIEWER */}
+
+<div className={`ai-interviewer ${isSpeaking ? "ai-speaking" : ""}`}>
+
+  <div className="ai-avatar">
+    🤖
+  </div>
+
+  <div className="ai-interviewer-info">
+    <h3>AI Interviewer</h3>
+
+    <p>
+      {isSpeaking
+        ? "🔊 Speaking..."
+        : "🎧 Listening to your answer"}
+    </p>
+  </div>
+
+</div>
+
         {/* QUESTION */}
 
         <div className="question-section">
