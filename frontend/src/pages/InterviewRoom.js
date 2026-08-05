@@ -25,6 +25,23 @@ const [cameraStream, setCameraStream] = useState(null);
   );
 
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+
+  useEffect(() => {
+    const timerInterval = setInterval(() => {
+      setElapsedTime((prevTime) => prevTime + 1);
+    }, 1000);
+
+    return () => {
+      clearInterval(timerInterval);
+    };
+  }, []);
 
   // ==============================
   // AI VOICE
@@ -392,6 +409,11 @@ const stopCamera = () => {
 
       <div className="interview-card">
 
+        <div className="interview-timer">
+          <span className="timer-icon">⏱</span>
+          <span className="timer-value">{formatTime(elapsedTime)}</span>
+        </div>
+
       {/* AI INTERVIEWER */}
 
 <div className={`ai-interviewer ${isSpeaking ? "ai-speaking" : ""}`}>
@@ -430,94 +452,96 @@ const stopCamera = () => {
 
         </div>
 
-        {/* RECORDING */}
+        {/* INTERVIEW CONTROLS */}
 
-        <div className="voice-section">
+        <div className="interview-control-panel">
 
-          {!isRecording ? (
-            <button
-              className="record-button"
-              onClick={startRecording}
-            >
-              🎤 Start Recording
-            </button>
-          ) : (
-            <button
-              className="record-button recording"
-              onClick={stopRecording}
-            >
-              ⏹ Stop Recording
-            </button>
-          )}
+          <div className="voice-section">
 
-          <p>
-            {isRecording
-              ? "Recording your answer..."
-              : "Click the button to record your answer."}
-          </p>
-
-          {/* AUDIO */}
-
-          {audioURL && (
-            <div className="audio-result">
-
-              <p>
-                ✅ Answer recorded successfully!
-              </p>
-
-              <audio
-                controls
-                src={audioURL}
-              />
-
-            </div>
-          )}
-
-          {/* TRANSCRIPT */}
-
-          {transcript && (
-            <div className="transcript-section">
-
-              <h3>
-                Your Answer
-              </h3>
-
-              <p>
-                {transcript}
-              </p>
-
-            </div>
-          )}
-
-          {/* EVALUATE BUTTON */}
-
-          {transcript && (
-            <div className="evaluation-action">
-
+            {!isRecording ? (
               <button
-                className="evaluate-button"
-                onClick={
-                  evaluateCandidateAnswer
-                }
-                disabled={isEvaluating}
+                className="record-button"
+                onClick={startRecording}
               >
-                {isEvaluating
-                  ? "Evaluating..."
-                  : "🤖 Evaluate My Answer"}
+                🎤 Start Recording
               </button>
+            ) : (
+              <button
+                className="record-button recording"
+                onClick={stopRecording}
+              >
+                ⏹ Stop Recording
+              </button>
+            )}
 
-            </div>
-          )}
+            <p>
+              {isRecording
+                ? "Recording your answer..."
+                : "Click the button to record your answer."}
+            </p>
 
-          {/* EVALUATION RESULT */}
+            {/* AUDIO */}
 
-                      {evaluation && (
-              <div className="evaluation-section">
+            {audioURL && (
+              <div className="audio-result">
 
-                <h3>🤖 AI Evaluation</h3>
+                <p>
+                  ✅ Answer recorded successfully!
+                </p>
 
-                <div className="evaluation-score">
-                  <strong>Score</strong>
+                <audio
+                  controls
+                  src={audioURL}
+                />
+
+              </div>
+            )}
+
+            {/* TRANSCRIPT */}
+
+            {transcript && (
+              <div className="transcript-section">
+
+                <h3>
+                  Your Answer
+                </h3>
+
+                <p>
+                  {transcript}
+                </p>
+
+              </div>
+            )}
+
+            {/* EVALUATE BUTTON */}
+
+            {transcript && (
+              <div className="evaluation-action">
+
+                <button
+                  className="evaluate-button"
+                  onClick={
+                    evaluateCandidateAnswer
+                  }
+                  disabled={isEvaluating}
+                >
+                  {isEvaluating
+                    ? "Evaluating..."
+                    : "🤖 Evaluate My Answer"}
+                </button>
+
+              </div>
+            )}
+
+            {/* EVALUATION RESULT */}
+
+                        {evaluation && (
+                <div className="evaluation-section">
+
+                  <h3>🤖 AI Evaluation</h3>
+
+                  <div className="evaluation-score">
+                    <strong>Score</strong>
                   <span>{evaluation.score || "N/A"}/10</span>
                 </div>
 
@@ -556,38 +580,95 @@ const stopCamera = () => {
 
               </div>
             )}
+          </div>
+
         </div>
 
-        {/* CAMERA */}
+       {/* CAMERA */}
 
 <div className="camera-section">
 
-  <video
-    ref={videoRef}
-    autoPlay
-    muted
-    playsInline
-    className="camera-preview"
-  />
+  <div className="camera-header">
+    <span>🎥 Your Camera</span>
 
-  {!cameraOn ? (
-    <button
-      className="camera-button"
-      onClick={startCamera}
-    >
-      🎥 Turn On Camera
-    </button>
-  ) : (
-    <button
-      className="camera-button"
-      onClick={stopCamera}
-    >
-      📷 Turn Off Camera
-    </button>
-  )}
+    {cameraOn && (
+      <span className="camera-status active">
+        ● Camera On
+      </span>
+    )}
+  </div>
+
+  <div className="camera-video-wrapper">
+
+    {cameraOn && (
+      <div className="camera-user-badge">
+        <span>👤</span>
+        <span>You</span>
+      </div>
+    )}
+
+    <video
+      ref={videoRef}
+      autoPlay
+      muted
+      playsInline
+      className="camera-preview"
+    />
+
+     {/* AI INTERVIEWER OVERLAY */}
+
+  <div className={`ai-video-overlay ${isSpeaking ? "ai-speaking" : ""}`}>
+
+    <div className="ai-video-avatar">
+      🤖
+    </div>
+
+    <div>
+      <strong>AI Interviewer</strong>
+
+      <span>
+        {isSpeaking
+          ? "🔊 Speaking..."
+          : "🎧 Listening"}
+      </span>
+    </div>
+
+  </div>
+
+
+    {!cameraOn && (
+      <div className="camera-placeholder">
+        <div className="camera-placeholder-icon">
+          🎥
+        </div>
+
+        <p>Camera is currently off</p>
+      </div>
+    )}
+
+  </div>
+
+  <div className="camera-controls">
+
+    {!cameraOn ? (
+      <button
+        className="camera-button"
+        onClick={startCamera}
+      >
+        🎥 Turn On Camera
+      </button>
+    ) : (
+      <button
+        className="camera-button camera-off-button"
+        onClick={stopCamera}
+      >
+        📷 Turn Off Camera
+      </button>
+    )}
+
+  </div>
 
 </div>
-
         {/* NEXT QUESTION */}
 
         <div className="interview-actions">
