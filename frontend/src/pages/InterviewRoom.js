@@ -469,305 +469,179 @@ const stopCamera = () => {
   // ==============================
 
   return (
-    <div className="interview-room">
+    <div className="interview-room modern">
 
-      <div className="interview-header">
+      {/* Top Header: interviewer + timer */}
+      <div className="interview-header modern-header">
+        <div className="header-left">
+          <div className="header-title">
+            <h3>AI Interviewer</h3>
+            <p className="ai-status">{isSpeaking ? "🔊 AI is speaking..." : "🎧 Listening to your answer"}</p>
+          </div>
+        </div>
 
-        <h1>
-          AI Interview Room
-        </h1>
-
-        <p>
-          {role} Interview •{" "}
-          {difficulty} Difficulty
-        </p>
-
+        <div className="header-right">
+          <div className="interview-timer header-timer">
+            <span className="timer-icon">⏱</span>
+            <span className="timer-value">{formatTime(elapsedTime)}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="interview-card">
+      <div className="interview-card modern-card">
 
-        <div className="interview-timer">
-          <span className="timer-icon">⏱</span>
-          <span className="timer-value">{formatTime(elapsedTime)}</span>
-        </div>
+        {/* Two column layout: AI panel (left) and Camera (right) */}
+        <div className="interview-layout">
 
-      {/* AI INTERVIEWER */}
-
-<div className={`ai-interviewer ${isSpeaking ? "ai-speaking" : ""}`}>
-
-  <div className="ai-avatar">
-    🤖
-  </div>
-
-  <div className="ai-interviewer-info">
-    <h3>AI Interviewer</h3>
-
-    <p>
-      {isSpeaking
-        ? "🔊 Speaking..."
-        : "🎧 Listening to your answer"}
-    </p>
-  </div>
-
-</div>
-
-        {/* QUESTION */}
-
-        <div className="question-section">
-
-          <span className="question-label">
-            AI Interview Question
-          </span>
-
-          <h2>
-            {currentQuestion}
-          </h2>
-
-          {isSpeaking && (
-            <p>🔊 AI is speaking...</p>
-          )}
-
-        </div>
-
-        {/* INTERVIEW CONTROLS */}
-
-        <div className="interview-control-panel">
-
-          <div className="voice-section">
-
-            {!isRecording ? (
-              <button
-                className="record-button"
-                onClick={startRecording}
-              >
-                🎤 Start Recording
-              </button>
-            ) : (
-              <button
-                className="record-button recording"
-                onClick={stopRecording}
-              >
-                ⏹ Stop Recording
-              </button>
-            )}
-
-            <p>
-              {isRecording
-                ? "Recording your answer..."
-                : "Click the button to record your answer."}
-            </p>
-
-            {/* AUDIO */}
-
-            {audioURL && (
-              <div className="audio-result">
-
-                <p>
-                  ✅ Answer recorded successfully!
-                </p>
-
-                <audio
-                  controls
-                  src={audioURL}
-                />
-
+          <div className="left-panel ai-panel">
+            <div className="ai-panel-card">
+              <div className={`ai-interviewer large ${isSpeaking ? "ai-speaking" : ""}`}>
+                <div className="ai-avatar large">🤖</div>
+                <div className="ai-interviewer-info">
+                  <h3>AI Interviewer</h3>
+                  <p className="ai-status">
+                    {isSpeaking ? "🔊 AI is speaking..." : "🎧 Listening to your answer"}
+                  </p>
+                </div>
               </div>
-            )}
 
-            {/* TRANSCRIPT */}
-
-            {transcript && (
-              <div className="transcript-section">
-
-                <h3>
-                  Your Answer
-                </h3>
-
-                <p>
-                  {transcript}
-                </p>
-
+              <div className="ai-avatar-placeholder">
+                {/* Professional placeholder for future animated avatar */}
+                <div className="avatar-future">AI Avatar Placeholder</div>
               </div>
-            )}
+            </div>
+          </div>
 
-            {/* EVALUATE BUTTON */}
+          <div className="right-panel camera-panel">
+            <div className="camera-section panel-card">
 
-            {transcript && (
-              <div className="evaluation-action">
+              <div className="camera-header">
+                <span>🎥 Your Camera</span>
 
-                <button
-                  className="evaluate-button"
-                  onClick={
-                    evaluateCandidateAnswer
-                  }
-                  disabled={isEvaluating}
-                >
-                  {isEvaluating
-                    ? "Evaluating..."
-                    : "🤖 Evaluate My Answer"}
-                </button>
-
+                {cameraOn && (
+                  <span className="camera-status active">● Camera On</span>
+                )}
               </div>
-            )}
 
-            {/* EVALUATION RESULT */}
+              <div className="camera-video-wrapper">
 
-                        {evaluation && (
-                <div className="evaluation-section">
+                {cameraOn && (
+                  <div className="camera-user-badge">
+                    <span>👤</span>
+                    <span>You</span>
+                  </div>
+                )}
 
-                  <h3>🤖 AI Evaluation</h3>
+                <video ref={videoRef} autoPlay muted playsInline className="camera-preview" />
 
-                  <div className="evaluation-score">
-                    <strong>Score</strong>
-                  <span>{evaluation.score || "N/A"}/10</span>
+                <div className={`ai-video-overlay ${isSpeaking ? "ai-speaking" : ""}`}>
+                  <div className="ai-video-avatar">🤖</div>
+                  <div>
+                    <strong>AI Interviewer</strong>
+                    <span>{isSpeaking ? "🔊 Speaking..." : "🎧 Listening"}</span>
+                  </div>
                 </div>
 
-                <div className="evaluation-content">
-
-                  <div className="evaluation-box">
-                    <h4>💬 Feedback</h4>
-                    <p>
-                      {evaluation.feedback || "No feedback available."}
-                    </p>
+                {!cameraOn && (
+                  <div className="camera-placeholder">
+                    <div className="camera-placeholder-icon">🎥</div>
+                    <p>Camera is currently off</p>
                   </div>
-
-                  <div className="evaluation-box">
-                    <h4>✅ Strengths</h4>
-                    <p>
-                      {evaluation.strengths || "No strengths provided."}
-                    </p>
-                  </div>
-
-                  <div className="evaluation-box">
-                    <h4>⚠️ Weaknesses</h4>
-                    <p>
-                      {evaluation.weaknesses || "No weaknesses provided."}
-                    </p>
-                  </div>
-
-                  <div className="evaluation-box">
-                    <h4>💡 Improvement</h4>
-                    <p>
-                      {evaluation.improvement ||
-                        "No improvement suggestions available."}
-                    </p>
-                  </div>
-
-                </div>
-
+                )}
               </div>
-            )}
+
+              <div className="camera-controls">
+                {!cameraOn ? (
+                  <button className="camera-button" onClick={startCamera}>🎥 Turn On Camera</button>
+                ) : (
+                  <button className="camera-button camera-off-button" onClick={stopCamera}>📷 Turn Off Camera</button>
+                )}
+              </div>
+
+            </div>
           </div>
 
         </div>
 
-       {/* CAMERA */}
-
-<div className="camera-section">
-
-  <div className="camera-header">
-    <span>🎥 Your Camera</span>
-
-    {cameraOn && (
-      <span className="camera-status active">
-        ● Camera On
-      </span>
-    )}
-  </div>
-
-  <div className="camera-video-wrapper">
-
-    {cameraOn && (
-      <div className="camera-user-badge">
-        <span>👤</span>
-        <span>You</span>
-      </div>
-    )}
-
-    <video
-      ref={videoRef}
-      autoPlay
-      muted
-      playsInline
-      className="camera-preview"
-    />
-
-     {/* AI INTERVIEWER OVERLAY */}
-
-  <div className={`ai-video-overlay ${isSpeaking ? "ai-speaking" : ""}`}>
-
-    <div className="ai-video-avatar">
-      🤖
-    </div>
-
-    <div>
-      <strong>AI Interviewer</strong>
-
-      <span>
-        {isSpeaking
-          ? "🔊 Speaking..."
-          : "🎧 Listening"}
-      </span>
-    </div>
-
-  </div>
-
-
-    {!cameraOn && (
-      <div className="camera-placeholder">
-        <div className="camera-placeholder-icon">
-          🎥
+        {/* Question section */}
+        <div className="question-section modern-question">
+          <span className="question-label">Current Interview Question</span>
+          <h2>{currentQuestion}</h2>
+          {isSpeaking && <div className="speaking-highlight">🔊 AI is speaking...</div>}
         </div>
 
-        <p>Camera is currently off</p>
-      </div>
-    )}
+        {/* Recording and evaluation (keep existing functionality/UI) */}
+        <div className="interview-control-panel">
+          <div className="voice-section">
+            {!isRecording ? (
+              <button className="record-button" onClick={startRecording}>🎤 Start Recording</button>
+            ) : (
+              <button className="record-button recording" onClick={stopRecording}>⏹ Stop Recording</button>
+            )}
 
-  </div>
+            <p>{isRecording ? "Recording your answer..." : "Click the button to record your answer."}</p>
 
-  <div className="camera-controls">
+            {audioURL && (
+              <div className="audio-result">
+                <p>✅ Answer recorded successfully!</p>
+                <audio controls src={audioURL} />
+              </div>
+            )}
 
-    {!cameraOn ? (
-      <button
-        className="camera-button"
-        onClick={startCamera}
-      >
-        🎥 Turn On Camera
-      </button>
-    ) : (
-      <button
-        className="camera-button camera-off-button"
-        onClick={stopCamera}
-      >
-        📷 Turn Off Camera
-      </button>
-    )}
+            {transcript && (
+              <div className="transcript-section">
+                <h3>Your Answer</h3>
+                <p>{transcript}</p>
+              </div>
+            )}
 
-  </div>
+            {transcript && (
+              <div className="evaluation-action">
+                <button className="evaluate-button" onClick={evaluateCandidateAnswer} disabled={isEvaluating}>
+                  {isEvaluating ? "Evaluating..." : "🤖 Evaluate My Answer"}
+                </button>
+              </div>
+            )}
 
-</div>
-        {/* NEXT QUESTION */}
+            {evaluation && (
+              <div className="evaluation-section">
+                <h3>🤖 AI Evaluation</h3>
 
-        <div className="interview-actions">
+                <div className="evaluation-score">
+                  <strong>Score</strong>
+                  <span>{evaluation.score || "N/A"}/10</span>
+                </div>
 
-          <button
-            className="next-button"
-            onClick={nextQuestion}
-            disabled={isLoading}
-          >
-            {isLoading
-              ? "Generating..."
-              : "Next Question →"}
-          </button>
+                <div className="evaluation-content">
+                  <div className="evaluation-box">
+                    <h4>💬 Feedback</h4>
+                    <p>{evaluation.feedback || "No feedback available."}</p>
+                  </div>
 
-          <button
-            className="end-interview-button"
-            onClick={handleEndInterview}
-            title="End the interview"
-          >
-            🛑 End Interview
-          </button>
+                  <div className="evaluation-box">
+                    <h4>✅ Strengths</h4>
+                    <p>{evaluation.strengths || "No strengths provided."}</p>
+                  </div>
 
+                  <div className="evaluation-box">
+                    <h4>⚠️ Weaknesses</h4>
+                    <p>{evaluation.weaknesses || "No weaknesses provided."}</p>
+                  </div>
+
+                  <div className="evaluation-box">
+                    <h4>💡 Improvement</h4>
+                    <p>{evaluation.improvement || "No improvement suggestions available."}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Action bar */}
+        <div className="interview-actions action-bar">
+          <button className="next-button" onClick={nextQuestion} disabled={isLoading}>{isLoading ? "Generating..." : "Next Question →"}</button>
+          <button className="end-interview-button" onClick={handleEndInterview} title="End the interview">🛑 End Interview</button>
         </div>
 
       </div>
