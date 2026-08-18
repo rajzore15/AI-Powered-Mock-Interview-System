@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 function InterviewRoom() {
   const location = useLocation();
@@ -26,6 +26,7 @@ const [cameraStream, setCameraStream] = useState(null);
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const timerRef = useRef(null);
 
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -34,12 +35,15 @@ const [cameraStream, setCameraStream] = useState(null);
   };
 
   useEffect(() => {
-    const timerInterval = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setElapsedTime((prevTime) => prevTime + 1);
     }, 1000);
 
     return () => {
-      clearInterval(timerInterval);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, []);
 
@@ -99,6 +103,13 @@ const [cameraStream, setCameraStream] = useState(null);
   const [evaluation, setEvaluation] = useState("");
 
   const [isEvaluating, setIsEvaluating] = useState(false);
+
+  const navigate = useNavigate();
+
+  // Track total questions asked in this session
+  const [totalQuestions, setTotalQuestions] = useState(
+    interviewData.question ? 1 : 0
+  );
 
   // ==============================
 // CAMERA
@@ -199,6 +210,69 @@ const stopCamera = () => {
       mediaRecorder.stop();
 
       setIsRecording(false);
+    }
+  };
+
+  // ==============================
+  // END INTERVIEW
+  // ==============================
+
+  const handleEndInterview = () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to end the interview?"
+    );
+
+    if (!confirmed) {
+      // User cancelled — do nothing and stay on the page
+      return;
+    }
+
+    // Stop the timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    // Stop any speaking
+    if (window && window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {
+        console.warn("speechSynthesis cancel error:", e);
+      }
+    }
+
+    // Stop camera if running
+    if (cameraOn) {
+      try {
+        stopCamera();
+      } catch (e) {
+        console.warn("stopCamera error:", e);
+      }
+    }
+
+    // Stop microphone recording if active
+    try {
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        setIsRecording(false);
+      }
+    } catch (e) {
+      console.warn("stopRecording error:", e);
+    }
+
+    // Navigate to Interview Complete page with summary state
+    try {
+      navigate("/interview-complete", {
+        state: {
+          role,
+          difficulty,
+          totalQuestions,
+          elapsedTime,
+        },
+      });
+    } catch (e) {
+      console.warn("Navigation error:", e);
     }
   };
 
@@ -364,6 +438,9 @@ const stopCamera = () => {
       }
 
       setCurrentQuestion(data.question);
+
+      // Increment question count when a new question is generated
+      setTotalQuestions((prev) => prev + 1);
 
       // Clear previous answer
       setAudioURL(null);
@@ -681,6 +758,14 @@ const stopCamera = () => {
             {isLoading
               ? "Generating..."
               : "Next Question →"}
+          </button>
+
+          <button
+            className="end-interview-button"
+            onClick={handleEndInterview}
+            title="End the interview"
+          >
+            🛑 End Interview
           </button>
 
         </div>
