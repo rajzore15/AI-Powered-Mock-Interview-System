@@ -468,80 +468,70 @@ const stopCamera = () => {
   // UI
   // ==============================
 
+  const aiState = isSpeaking ? "speaking" : isRecording ? "listening" : "ready";
+  const aiStateLabel = isSpeaking
+    ? "AI is speaking"
+    : isRecording
+      ? "Listening to your answer"
+      : "Ready for your answer";
+  const interviewSubtitle = interviewData.role
+    ? `${difficulty} technical round · ${role}`
+    : "Technical round · Python Developer";
+  const bannerLabel = isSpeaking
+    ? "The interviewer is asking your question"
+    : isRecording
+      ? "Listening to your answer"
+      : "Please wait";
+  const bannerMessage = isSpeaking
+    ? "The interviewer is asking your question"
+    : isRecording
+      ? "Your answer is being recorded"
+      : "The interviewer is ready for your answer";
+
   return (
     <div className="interview-room modern">
-
-      {/* Top Header: interviewer + timer */}
-      <div className="interview-header modern-header">
-        <div className="header-left">
-          <div className="header-title">
-            <h3>AI Interviewer</h3>
-            <p className="ai-status">{isSpeaking ? "🔊 AI is speaking..." : "🎧 Listening to your answer"}</p>
-          </div>
-        </div>
-
-        <div className="header-right">
-          <div className="interview-timer header-timer">
-            <span className="timer-icon">⏱</span>
-            <span className="timer-value">{formatTime(elapsedTime)}</span>
-          </div>
-        </div>
-      </div>
-
       <div className="interview-card modern-card">
-
-        {/* Two column layout: AI panel (left) and Camera (right) */}
-        <div className="interview-layout">
-
-          <div className="left-panel ai-panel">
-            <div className="ai-panel-card">
-              <div className={`ai-interviewer large ${isSpeaking ? "ai-speaking" : ""}`}>
-                <div className="ai-avatar large">🤖</div>
-                <div className="ai-interviewer-info">
-                  <h3>AI Interviewer</h3>
-                  <p className="ai-status">
-                    {isSpeaking ? "🔊 AI is speaking..." : "🎧 Listening to your answer"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="ai-avatar-placeholder">
-                {/* Professional placeholder for future animated avatar */}
-                <div className="avatar-future">AI Avatar Placeholder</div>
-              </div>
+        <div className="interview-header modern-header">
+          <div className="header-left">
+            <div className="header-title">
+              <h1>Practice Interview</h1>
+              <p>{interviewSubtitle}</p>
             </div>
           </div>
+          <div className="header-right">
+            <div className="interview-timer header-timer">
+              <span className="timer-icon">◷</span>
+              <span className="timer-value">{formatTime(elapsedTime)}</span>
+            </div>
+            <button className="end-interview-button" onClick={handleEndInterview} title="End the interview">
+              <span aria-hidden="true">×</span> End Interview
+            </button>
+          </div>
+        </div>
 
-          <div className="right-panel camera-panel">
-            <div className="camera-section panel-card">
+        <div className={`interview-status-banner ai-state-${aiState}`}>
+          <div className="status-banner-copy">
+            <div className="voice-wave-icon" aria-hidden="true"><span /><span /><span /><span /></div>
+            <div>
+              <span className="status-banner-label">{bannerLabel}</span>
+              <strong>{bannerMessage}</strong>
+            </div>
+          </div>
+          <span className="voice-mode-pill"><span aria-hidden="true">⌁</span> Real-time voice</span>
+        </div>
 
+        <div className="video-interview-grid">
+          <div className="user-camera-panel">
+            <div className="camera-section">
               <div className="camera-header">
                 <span>🎥 Your Camera</span>
-
-                {cameraOn && (
-                  <span className="camera-status active">● Camera On</span>
-                )}
+                <button className="camera-settings-button" type="button" aria-label="Camera settings">⚙</button>
               </div>
-
               <div className="camera-video-wrapper">
-
                 {cameraOn && (
-                  <div className="camera-user-badge">
-                    <span>👤</span>
-                    <span>You</span>
-                  </div>
+                  <div className="camera-user-badge"><span className="camera-record-dot" /> <span>You</span></div>
                 )}
-
                 <video ref={videoRef} autoPlay muted playsInline className="camera-preview" />
-
-                <div className={`ai-video-overlay ${isSpeaking ? "ai-speaking" : ""}`}>
-                  <div className="ai-video-avatar">🤖</div>
-                  <div>
-                    <strong>AI Interviewer</strong>
-                    <span>{isSpeaking ? "🔊 Speaking..." : "🎧 Listening"}</span>
-                  </div>
-                </div>
-
                 {!cameraOn && (
                   <div className="camera-placeholder">
                     <div className="camera-placeholder-icon">🎥</div>
@@ -549,7 +539,6 @@ const stopCamera = () => {
                   </div>
                 )}
               </div>
-
               <div className="camera-controls">
                 {!cameraOn ? (
                   <button className="camera-button" onClick={startCamera}>🎥 Turn On Camera</button>
@@ -557,15 +546,31 @@ const stopCamera = () => {
                   <button className="camera-button camera-off-button" onClick={stopCamera}>📷 Turn Off Camera</button>
                 )}
               </div>
-
             </div>
           </div>
 
+          <div className={`ai-video-panel ai-state-${aiState}`}>
+            <div className="ai-panel-topline">
+              <span className="ai-state-pill"><span className="mini-wave" aria-hidden="true">⌁</span> {isSpeaking ? "Speaking" : isRecording ? "Listening" : "Ready"}</span>
+              <span className="ai-voice-icon" aria-hidden="true">⌁</span>
+            </div>
+            <div className="ai-avatar-stage">
+              <div className="ai-avatar large" aria-hidden="true">🤖</div>
+            </div>
+            <div className="ai-interviewer-info">
+              <div className="ai-live-status" aria-live="polite">
+                <span className="ai-status-dot" aria-hidden="true" />
+                <span>{aiStateLabel}</span>
+                {isRecording && <span className="status-dots" aria-hidden="true"><span /><span /><span /></span>}
+              </div>
+              <span className="ai-name-pill">✦ AI Interviewer</span>
+            </div>
+          </div>
         </div>
 
         {/* Question section */}
         <div className="question-section modern-question">
-          <span className="question-label">Current Interview Question</span>
+          <span className="question-label">LIVE</span>
           <h2>{currentQuestion}</h2>
           {isSpeaking && <div className="speaking-highlight">🔊 AI is speaking...</div>}
         </div>
@@ -641,7 +646,6 @@ const stopCamera = () => {
         {/* Action bar */}
         <div className="interview-actions action-bar">
           <button className="next-button" onClick={nextQuestion} disabled={isLoading}>{isLoading ? "Generating..." : "Next Question →"}</button>
-          <button className="end-interview-button" onClick={handleEndInterview} title="End the interview">🛑 End Interview</button>
         </div>
 
       </div>

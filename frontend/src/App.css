@@ -319,6 +319,7 @@ body {
   .features-container {
     grid-template-columns: repeat(2, 1fr);
   }
+}
 
 /* Modern Interview Room Layout */
 .interview-room.modern {
@@ -380,14 +381,15 @@ body {
   border: 1px solid rgba(255,255,255,0.04);
 }
 
-.interview-layout {
+.video-interview-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px;
-  align-items: start;
+  width: 100%;
+  align-items: stretch;
 }
 
-.ai-panel-card, .panel-card {
+.ai-video-panel, .user-camera-panel {
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   border-radius: 18px;
   padding: 22px;
@@ -395,48 +397,22 @@ body {
   backdrop-filter: blur(6px) saturate(120%);
 }
 
-.ai-panel {
+.ai-video-panel {
+  min-height: 390px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.ai-interviewer.large .ai-avatar.large {
-  width: 160px;
-  height: 160px;
-  font-size: 64px;
-  border-radius: 18px;
-  display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(99,102,241,0.10), rgba(6,182,212,0.06));
-  border: 1px solid rgba(255,255,255,0.04);
-  box-shadow: 0 10px 30px rgba(6,24,48,0.5) inset;
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  gap: 24px;
+  overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(34, 211, 238, 0.14), transparent 32%),
+    radial-gradient(circle at 50% 58%, rgba(124, 58, 237, 0.13), transparent 58%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.96), rgba(15, 33, 56, 0.88));
 }
 
-/* Glowing ring when AI is speaking */
-.ai-interviewer.large.ai-speaking .ai-avatar.large {
-  animation: aiGlow 1.6s infinite ease-in-out;
-}
-
-@keyframes aiGlow {
-  0% { box-shadow: 0 0 0 0 rgba(6,182,212,0.06), 0 0 0 6px rgba(124,58,237,0.02); transform: translateY(0); }
-  50% { box-shadow: 0 0 40px 8px rgba(6,182,212,0.12), 0 0 0 12px rgba(124,58,237,0.04); transform: translateY(-4px); }
-  100% { box-shadow: 0 0 0 0 rgba(6,182,212,0.06), 0 0 0 6px rgba(124,58,237,0.02); transform: translateY(0); }
-}
-
-.ai-avatar-placeholder .avatar-future {
-  margin-top: 12px;
-  padding: 22px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  color: #cfe6ff;
-  text-align: center;
-  font-size: 15px;
-}
-
-.camera-panel .camera-video-wrapper {
+.user-camera-panel .camera-video-wrapper {
   aspect-ratio: 16/9;
   width: 100%;
   border-radius: 14px;
@@ -496,30 +472,144 @@ body {
 
 .end-interview-button:hover { transform: translateY(-3px); }
 
+.ai-avatar-stage {
+  width: min(230px, 62vw);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  position: relative;
+  border-radius: 50%;
+  transition: box-shadow 0.45s ease, transform 0.45s ease;
+}
+
+.ai-avatar-stage::before,
+.ai-avatar-stage::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(103, 232, 249, 0.2);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.35s ease, border-color 0.35s ease;
+}
+
+.ai-avatar-stage::after {
+  inset: -5px;
+}
+
+.ai-avatar.large {
+  width: 148px;
+  height: 148px;
+  z-index: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 68px;
+  background: linear-gradient(145deg, rgba(30, 41, 79, 0.98), rgba(8, 47, 73, 0.96));
+  border: 1px solid rgba(165, 243, 252, 0.45);
+  box-shadow: 0 0 34px rgba(34, 211, 238, 0.2), inset 0 0 28px rgba(99, 102, 241, 0.26);
+  transition: transform 0.45s ease, box-shadow 0.45s ease;
+}
+
+.ai-interviewer-info {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.ai-video-panel .ai-interviewer-info h3 {
+  margin-bottom: 10px;
+  color: #f8fafc;
+  font-size: 17px;
+  letter-spacing: 0.02em;
+}
+
+.ai-live-status {
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #b6c8dc;
+  font-size: 13px;
+  transition: color 0.35s ease;
+}
+
+.ai-status-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #a5b4fc;
+  box-shadow: 0 0 12px rgba(165, 180, 252, 0.75);
+  transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+
+.ai-state-ready .ai-avatar-stage { box-shadow: 0 0 38px rgba(99, 102, 241, 0.12); }
+.ai-state-ready .ai-avatar-stage::before { opacity: 1; }
+.ai-state-speaking .ai-avatar-stage { animation: speakingGlow 2.4s ease-in-out infinite; }
+.ai-state-speaking .ai-avatar-stage::before,
+.ai-state-speaking .ai-avatar-stage::after { opacity: 1; border-color: rgba(34, 211, 238, 0.6); }
+.ai-state-speaking .ai-avatar.large { animation: avatarPulse 2.4s ease-in-out infinite; }
+.ai-state-speaking .ai-status-dot { background: #22d3ee; box-shadow: 0 0 14px rgba(34, 211, 238, 0.9); }
+.ai-state-speaking .ai-live-status { color: #a5f3fc; }
+.ai-state-listening .ai-avatar-stage { animation: listeningPulse 2s ease-in-out infinite; }
+.ai-state-listening .ai-avatar-stage::before { opacity: 1; border-color: rgba(45, 212, 191, 0.7); }
+.ai-state-listening .ai-status-dot { background: #2dd4bf; box-shadow: 0 0 14px rgba(45, 212, 191, 0.85); }
+.ai-state-listening .ai-live-status { color: #99f6e4; }
+
+.status-dots { display: inline-flex; gap: 3px; margin-left: 2px; }
+.status-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: statusDots 1.2s ease-in-out infinite;
+}
+.status-dots span:nth-child(2) { animation-delay: 0.16s; }
+.status-dots span:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes avatarPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
+}
+
+@keyframes speakingGlow {
+  0%, 100% { box-shadow: 0 0 22px rgba(34, 211, 238, 0.16); }
+  50% { box-shadow: 0 0 48px rgba(34, 211, 238, 0.38), 0 0 78px rgba(99, 102, 241, 0.16); }
+}
+
+@keyframes listeningPulse {
+  0%, 100% { box-shadow: 0 0 22px rgba(45, 212, 191, 0.14); }
+  50% { box-shadow: 0 0 42px rgba(45, 212, 191, 0.32); }
+}
+
+@keyframes statusDots {
+  0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
 @media (max-width: 1200px) {
   .modern-card { padding: 18px; }
 }
 
 @media (max-width: 900px) {
-  .interview-layout { grid-template-columns: 1fr; }
-  .camera-panel .camera-video-wrapper { aspect-ratio: 16/9; height: auto; }
-  .ai-interviewer.large .ai-avatar.large { width: 120px; height: 120px; font-size: 48px; }
+  .video-interview-grid { grid-template-columns: 1fr; }
+  .user-camera-panel .camera-video-wrapper { aspect-ratio: 16/9; height: auto; }
+  .ai-avatar.large { width: 120px; height: 120px; font-size: 48px; }
 }
 
 @media (max-width: 700px) {
-  .interview-layout {
-    grid-template-columns: 1fr;
-  }
-
   .action-bar {
     justify-content: center;
   }
 
-  .camera-panel .camera-video-wrapper {
-    height: 260px;
+  .user-camera-panel .camera-video-wrapper {
+    height: auto;
   }
-}
 
+  .ai-video-panel { min-height: 350px; }
+  .ai-avatar.large { width: 124px; height: 124px; font-size: 56px; }
 }
 
 
@@ -903,13 +993,11 @@ body {
 
 .interview-room {
   min-height: calc(100vh - 70px);
-  padding: 35px 25px;
-
- background:
-  radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.18), transparent 35%),
-  radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.15), transparent 35%),
-  #3189b3;
-
+  padding: 36px 20px 50px;
+  background:
+    radial-gradient(circle at 12% 15%, rgba(99, 102, 241, 0.18), transparent 32%),
+    radial-gradient(circle at 88% 80%, rgba(20, 184, 166, 0.14), transparent 34%),
+    linear-gradient(135deg, #080f1f 0%, #111827 52%, #172238 100%);
   color: white;
 }
 
@@ -932,13 +1020,15 @@ body {
 /* Main interview card */
 
 .interview-card {
-  max-width: 1200px;
+  width: min(94%, 1400px);
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 25px;
-  background: #506aa3;
-  border: 1px solid #273449;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 18px;
-  box-shadow: 0 15px 40px rgba(102, 44, 44, 0.35);
+  box-shadow: 0 20px 55px rgba(2, 6, 23, 0.52);
+  backdrop-filter: blur(12px) saturate(125%);
 }
 
 /* AI interviewer */
@@ -1047,11 +1137,13 @@ body {
 ========================= */
 
 .camera-section {
-  margin-top: 30px;
+  min-height: 390px;
+  height: 100%;
+  margin-top: 0;
   padding: 22px;
-  background: rgba(15, 23, 42, 0.98);
+  background: rgba(7, 18, 36, 0.88);
   border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 22px;
+  border-radius: 18px;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
 }
 
@@ -1084,7 +1176,8 @@ body {
 .camera-video-wrapper {
   position: relative;
   width: 100%;
-  height: 360px;
+  height: auto;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: 20px;
   background: #030712;
@@ -1231,7 +1324,7 @@ body {
 @media (max-width: 700px) {
 
   .camera-video-wrapper {
-    height: 250px;
+    height: auto;
   }
 
 }
@@ -1291,6 +1384,183 @@ body {
 
   font-size: 10px;
   color: #cbd5e1;
+}
+
+/* =========================
+   INTERVIEW DASHBOARD DESIGN
+========================= */
+
+.interview-room.modern {
+  min-height: calc(100vh - 70px);
+  padding: 42px 20px 64px;
+  background:
+    radial-gradient(ellipse at 4% 18%, rgba(190, 242, 100, 0.3), transparent 25%),
+    radial-gradient(ellipse at 96% 86%, rgba(167, 243, 208, 0.5), transparent 28%),
+    linear-gradient(135deg, #f7faf6 0%, #eef4ee 48%, #f6f8f4 100%);
+  color: #17251e;
+  position: relative;
+  overflow: hidden;
+}
+
+.interview-room.modern::before,
+.interview-room.modern::after {
+  content: "";
+  position: absolute;
+  border: 1px solid rgba(132, 174, 111, 0.18);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.interview-room.modern::before { width: 520px; height: 220px; top: -90px; right: -120px; transform: rotate(-18deg); }
+.interview-room.modern::after { width: 600px; height: 260px; bottom: -170px; left: -170px; transform: rotate(18deg); }
+
+.modern-card {
+  width: min(94%, 1400px);
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 30px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 28px;
+  box-shadow: 0 24px 70px rgba(64, 88, 64, 0.14), 0 2px 8px rgba(64, 88, 64, 0.06);
+  backdrop-filter: blur(18px) saturate(120%);
+  position: relative;
+  z-index: 1;
+}
+
+.modern-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  max-width: none;
+  margin-bottom: 28px;
+  text-align: left;
+}
+
+.modern-header .header-left,
+.modern-header .header-right { display: flex; align-items: center; gap: 12px; }
+.modern-header h1 { margin: 0; color: #17251e; font-size: clamp(28px, 3vw, 42px); line-height: 1.05; letter-spacing: -0.02em; }
+.modern-header p { margin-top: 8px; color: #728077; font-size: 14px; }
+.header-timer { margin: 0; padding: 11px 16px; color: #294337; background: rgba(244, 248, 242, 0.9); border: 1px solid #dce7dc; border-radius: 999px; box-shadow: none; }
+.timer-icon { color: #4f8c70; }
+
+.end-interview-button {
+  margin: 0;
+  padding: 11px 17px;
+  background: #fff;
+  color: #bb4f52;
+  border: 1px solid #efc7c8;
+  border-radius: 999px;
+  font-size: 13px;
+  box-shadow: none;
+}
+.end-interview-button span { font-size: 20px; vertical-align: -1px; margin-right: 4px; }
+.end-interview-button:hover { background: #fff6f6; color: #a83e42; transform: translateY(-1px); }
+
+.interview-status-banner {
+  min-height: 108px;
+  margin-bottom: 24px;
+  padding: 22px 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(100deg, #f0f8e9, #f7fbf3);
+  border: 1px solid #deebd7;
+  border-radius: 20px;
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+}
+.interview-status-banner.ai-state-speaking { border-color: #bce6d1; box-shadow: 0 12px 30px rgba(93, 173, 127, 0.12); }
+.status-banner-copy { display: flex; align-items: center; gap: 16px; }
+.status-banner-copy strong { display: block; margin-top: 5px; color: #1e3429; font-size: 19px; }
+.status-banner-label { color: #819087; font-size: 12px; }
+.voice-wave-icon { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 3px; background: #dff1c9; border-radius: 13px; }
+.voice-wave-icon span { width: 3px; height: 12px; background: #69a65e; border-radius: 5px; animation: bannerWave 1.2s ease-in-out infinite; }
+.voice-wave-icon span:nth-child(2) { height: 20px; animation-delay: .15s; }
+.voice-wave-icon span:nth-child(3) { height: 16px; animation-delay: .3s; }
+.voice-wave-icon span:nth-child(4) { height: 9px; animation-delay: .45s; }
+.voice-mode-pill { padding: 10px 15px; color: #47705c; background: #fff; border: 1px solid #dce9dc; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+.video-interview-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; width: 100%; align-items: stretch; }
+.user-camera-panel, .ai-video-panel { min-width: 0; min-height: 420px; padding: 20px; border: 1px solid #dfe8df; border-radius: 22px; box-shadow: 0 14px 35px rgba(76, 103, 76, 0.08); }
+.user-camera-panel { background: #f8faf8; }
+.ai-video-panel { display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; background: linear-gradient(145deg, #f5faf2, #eef7ed 56%, #f7f9f3); }
+.camera-section { min-height: 0; height: 100%; margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none; }
+.camera-header { margin-bottom: 14px; color: #45564c; }
+.camera-settings-button { width: 32px; height: 32px; border: 1px solid #dce7dd; border-radius: 10px; background: #fff; color: #6a7b70; cursor: pointer; }
+.camera-video-wrapper { height: auto; aspect-ratio: 16 / 9; border-radius: 16px; background: #dce5dd; box-shadow: 0 10px 25px rgba(58, 77, 63, 0.1); }
+.camera-placeholder { background: linear-gradient(135deg, #e8eee9, #dfe9e1); color: #708078; }
+.camera-placeholder p { color: #708078; }
+.camera-user-badge { top: auto; bottom: 14px; left: 14px; padding: 9px 13px; color: #fff; background: rgba(31, 47, 39, 0.78); border: 0; }
+.camera-record-dot { width: 8px; height: 8px; display: inline-block; border-radius: 50%; background: #ed6868; box-shadow: 0 0 0 3px rgba(237, 104, 104, 0.18); }
+.camera-controls { margin-top: 16px; }
+.camera-button { padding: 11px 18px; background: #e7f3dd; color: #3f7347; border: 1px solid #cfe5c5; border-radius: 999px; box-shadow: none; }
+.camera-button:hover { background: #dcedcf; color: #315f38; box-shadow: none; }
+.camera-off-button { background: #edf0ed; color: #65736a; }
+
+.ai-panel-topline { display: flex; justify-content: space-between; align-items: center; }
+.ai-state-pill { padding: 9px 13px; color: #3f7654; background: #e6f4dd; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.mini-wave { font-size: 16px; }
+.ai-voice-icon { width: 36px; height: 36px; display: grid; place-items: center; color: #fff; background: #4389db; border-radius: 50%; box-shadow: 0 8px 18px rgba(67, 137, 219, 0.22); }
+.ai-avatar-stage { width: 230px; height: 230px; margin: auto; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, #d9f47e 0%, #b4dc69 35%, #3d7560 68%, #214f4a 100%); box-shadow: 0 0 0 15px rgba(98, 150, 105, 0.08), 0 18px 42px rgba(54, 113, 81, 0.22); }
+.ai-avatar.large { width: 152px; height: 152px; border-radius: 50%; background: radial-gradient(circle at 40% 30%, #efffa6, #9bd36b 48%, #4c9970); border: 5px solid rgba(238, 255, 188, 0.8); box-shadow: 0 0 30px rgba(190, 240, 105, 0.45); font-size: 68px; }
+.ai-state-speaking .ai-avatar-stage { animation: dashboardSpeaking 2.3s ease-in-out infinite; }
+.ai-state-speaking .ai-avatar.large { animation: dashboardAvatarPulse 2.3s ease-in-out infinite; }
+.ai-state-listening .ai-avatar-stage { box-shadow: 0 0 0 15px rgba(62, 170, 133, 0.08), 0 18px 42px rgba(54, 113, 81, 0.22); }
+.ai-interviewer-info { text-align: center; }
+.ai-live-status { color: #567163; }
+.ai-state-speaking .ai-status-dot { background: #45b978; box-shadow: 0 0 12px rgba(69, 185, 120, 0.6); }
+.ai-state-listening .ai-status-dot { background: #3d9d83; box-shadow: 0 0 12px rgba(61, 157, 131, 0.6); }
+.ai-name-pill { display: inline-block; margin-top: 12px; padding: 10px 15px; color: #3b5949; background: rgba(255, 255, 255, 0.75); border: 1px solid #d8e6d7; border-radius: 999px; font-size: 13px; font-weight: 700; }
+
+.modern-question { min-height: 92px; margin-top: 24px; padding: 19px 22px; display: flex; align-items: center; gap: 18px; background: #fff; border: 1px solid #e2e9e1; border-radius: 18px; box-shadow: 0 8px 22px rgba(76, 103, 76, 0.05); }
+.question-label { flex: 0 0 auto; margin: 0; padding: 8px 13px; background: #d8f17a; color: #426332; border-radius: 999px; font-size: 11px; letter-spacing: .08em; }
+.question-section h2 { color: #24362a; font-size: 18px; line-height: 1.45; }
+.speaking-highlight { margin-left: auto; color: #54845c; background: #eef8e9; border-color: #d8ebd0; }
+
+.interview-control-panel { margin-top: 20px; padding: 16px; background: #f7faf7; border: 1px solid #e1eae1; border-radius: 18px; }
+.voice-section { padding: 8px; background: transparent; border: 0; }
+.voice-section p { color: #7b8b81; }
+.record-button, .evaluate-button { padding: 12px 20px; border-radius: 999px; background: #4e9b75; box-shadow: 0 8px 18px rgba(78, 155, 117, 0.16); }
+.record-button:hover, .evaluate-button:hover { background: #3e8663; }
+.record-button.recording { background: #d45d61; }
+.audio-result, .transcript-section, .evaluation-section { border-radius: 16px; }
+.transcript-section { background: #eef6ec; border: 1px solid #dcebd8; }
+.transcript-section p { color: #486052; }
+.evaluation-section { background: #fff; border: 1px solid #e2e9e1; }
+.evaluation-section h3 { color: #294336; }
+.evaluation-score { background: #eff8dd; color: #54834d; }
+
+.action-bar { justify-content: flex-end; margin-top: 22px; }
+.next-button { margin: 0; padding: 12px 21px; border-radius: 999px; background: #4389db; color: #fff; }
+.next-button:hover { background: #3478c8; transform: translateY(-1px); }
+
+@keyframes bannerWave { 0%, 100% { transform: scaleY(.55); } 50% { transform: scaleY(1.15); } }
+@keyframes dashboardSpeaking { 0%, 100% { box-shadow: 0 0 0 15px rgba(98, 150, 105, 0.08), 0 18px 42px rgba(54, 113, 81, 0.22); } 50% { box-shadow: 0 0 0 25px rgba(98, 150, 105, 0.14), 0 18px 55px rgba(54, 113, 81, 0.32); } }
+@keyframes dashboardAvatarPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+
+@media (max-width: 900px) {
+  .video-interview-grid { grid-template-columns: 1fr; }
+  .modern-header { align-items: flex-start; }
+}
+
+@media (max-width: 640px) {
+  .interview-room.modern { padding: 22px 10px 40px; }
+  .modern-card { width: 100%; padding: 18px; border-radius: 22px; }
+  .modern-header, .interview-status-banner { align-items: flex-start; flex-direction: column; }
+  .modern-header { gap: 18px; }
+  .modern-header .header-right { width: 100%; justify-content: space-between; }
+  .interview-status-banner { padding: 18px; }
+  .status-banner-copy strong { font-size: 16px; }
+  .voice-mode-pill { align-self: flex-start; }
+  .user-camera-panel, .ai-video-panel { min-height: 360px; padding: 16px; }
+  .ai-avatar-stage { width: 190px; height: 190px; }
+  .ai-avatar.large { width: 128px; height: 128px; font-size: 56px; }
+  .modern-question { align-items: flex-start; flex-direction: column; gap: 11px; }
+  .speaking-highlight { margin-left: 0; }
+  .action-bar { justify-content: stretch; }
+  .next-button { width: 100%; }
 }
 
 /* Interview Complete Page */
