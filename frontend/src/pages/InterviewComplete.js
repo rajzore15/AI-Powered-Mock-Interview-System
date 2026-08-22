@@ -9,9 +9,14 @@ function InterviewComplete() {
   const state = location.state || {};
 
   const role = state.role || "Candidate";
+  const experience = state.experience || "N/A";
+  const skill = state.skill || "N/A";
   const difficulty = state.difficulty || "N/A";
   const totalQuestions = state.totalQuestions ?? 0;
   const elapsedTime = state.elapsedTime ?? 0;
+  const questions = Array.isArray(state.questions) ? state.questions : [];
+  const answers = Array.isArray(state.answers) ? state.answers : [];
+  const evaluations = Array.isArray(state.evaluations) ? state.evaluations : [];
 
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -43,6 +48,16 @@ function InterviewComplete() {
             </div>
 
             <div className="summary-row">
+              <strong>Experience</strong>
+              <span>{experience}</span>
+            </div>
+
+            <div className="summary-row">
+              <strong>Primary Skill</strong>
+              <span>{skill}</span>
+            </div>
+
+            <div className="summary-row">
               <strong>Difficulty</strong>
               <span>{difficulty}</span>
             </div>
@@ -54,6 +69,20 @@ function InterviewComplete() {
           </div>
         </div>
 
+        {questions.length > 0 && (
+          <div className="summary-card">
+            {questions.map((question, index) => (
+              <div className="summary-row" key={`${question}-${index}`}>
+                <strong>Question {index + 1}</strong>
+                <span>{answers[index] || "No answer recorded"}</span>
+                {evaluations[index] && (
+                  <span>Score: {evaluations[index].score || "N/A"}/10</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="complete-actions">
           <button
             className="complete-button outline"
@@ -64,7 +93,7 @@ function InterviewComplete() {
 
           <button
             className="complete-button primary"
-            onClick={() => navigate("/interview-setup")}
+            onClick={() => navigate("/interview")}
           >
             Start New Interview
           </button>

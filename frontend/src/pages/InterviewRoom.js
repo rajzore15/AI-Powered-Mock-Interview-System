@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 function InterviewRoom() {
   const location = useLocation();
+  const TOTAL_QUESTIONS = 5;
 
   const videoRef = useRef(null);
 const [cameraOn, setCameraOn] = useState(false);
@@ -23,6 +24,20 @@ const [cameraStream, setCameraStream] = useState(null);
     interviewData.question ||
       "Tell me about yourself and your background."
   );
+  const [questions, setQuestions] = useState([
+    interviewData.question ||
+      "Tell me about yourself and your background."
+  ]);
+  const [, setAnswers] = useState([]);
+  const [, setEvaluations] = useState([]);
+  const questionsRef = useRef(questions);
+  const answersRef = useRef([]);
+  const evaluationsRef = useRef([]);
+  const processingRef = useRef(false);
+  const prefetchKeyRef = useRef(null);
+  const prefetchedQuestionRef = useRef(null);
+  const prefetchPromiseRef = useRef(null);
+  const advanceTimerRef = useRef(null);
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -89,13 +104,15 @@ const [cameraStream, setCameraStream] = useState(null);
   // STATES
   // ==============================
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPreparingNext, setIsPreparingNext] = useState(false);
+  const [prefetchedQuestion, setPrefetchedQuestion] = useState(null);
 
   const [isRecording, setIsRecording] = useState(false);
 
   const [audioURL, setAudioURL] = useState(null);
 
   const [transcript, setTranscript] = useState("");
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   const [mediaRecorder, setMediaRecorder] = useState(null);
 
@@ -107,9 +124,13 @@ const [cameraStream, setCameraStream] = useState(null);
   const navigate = useNavigate();
 
   // Track total questions asked in this session
-  const [totalQuestions, setTotalQuestions] = useState(
-    interviewData.question ? 1 : 0
-  );
+  const [totalQuestions, setTotalQuestions] = useState(1);
+
+  useEffect(() => () => {
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+    }
+  }, []);
 
   // ==============================
 // CAMERA
@@ -152,6 +173,8 @@ const stopCamera = () => {
   // ==============================
 
   const startRecording = async () => {
+    if (processingRef.current || isRecording || isPreparingNext) return;
+
     try {
       const stream =
         await navigator.mediaDevices.getUserMedia({
@@ -181,7 +204,8 @@ const stopCamera = () => {
           track.stop();
         });
 
-        await transcribeAudio(audioBlob);
+        setMediaRecorder(null);
+        await processAnswer(audioBlob);
       };
 
       recorder.start();
@@ -190,7 +214,8 @@ const stopCamera = () => {
 
       setIsRecording(true);
 
-      // Clear old evaluation
+      setAudioURL(null);
+      setTranscript("");
       setEvaluation("");
     } catch (error) {
       console.error("Microphone error:", error);
@@ -206,7 +231,7 @@ const stopCamera = () => {
   // ==============================
 
   const stopRecording = () => {
-    if (mediaRecorder) {
+    if (mediaRecorder && !processingRef.current) {
       mediaRecorder.stop();
 
       setIsRecording(false);
@@ -266,7 +291,12 @@ const stopCamera = () => {
       navigate("/interview-complete", {
         state: {
           role,
+          experience,
+          skill,
           difficulty,
+          questions: questionsRef.current,
+          answers: answersRef.current,
+          evaluations: evaluationsRef.current,
           totalQuestions,
           elapsedTime,
         },
@@ -281,6 +311,8 @@ const stopCamera = () => {
   // ==============================
 
   const transcribeAudio = async (audioBlob) => {
+    setIsTranscribing(true);
+
     try {
       const formData = new FormData();
 
@@ -306,12 +338,17 @@ const stopCamera = () => {
         );
       }
 
+      if (typeof data.transcript !== "string" || !data.transcript.trim()) {
+        throw new Error("No transcript received from backend");
+      }
+
       console.log(
         "Transcript:",
         data.transcript
       );
 
       setTranscript(data.transcript);
+      return data.transcript;
     } catch (error) {
       console.error(
         "Transcription error:",
@@ -319,8 +356,12 @@ const stopCamera = () => {
       );
 
       alert(
-        "Unable to transcribe your answer."
+        error.message ||
+          "Unable to transcribe your answer."
       );
+      return null;
+    } finally {
+      setIsTranscribing(false);
     }
   };
 
@@ -328,8 +369,8 @@ const stopCamera = () => {
   // EVALUATE ANSWER - DAY 4
   // ==============================
 
-  const evaluateCandidateAnswer = async () => {
-    if (!transcript) {
+  const evaluateCandidateAnswer = async (question = currentQuestion, answer = transcript) => {
+    if (!answer) {
       alert(
         "Please record your answer first."
       );
@@ -337,7 +378,7 @@ const stopCamera = () => {
       return;
     }
 
-    if (isEvaluating) return;
+    if (isEvaluating || isTranscribing) return;
 
     setIsEvaluating(true);
 
@@ -352,8 +393,8 @@ const stopCamera = () => {
           },
 
           body: JSON.stringify({
-            question: currentQuestion,
-            answer: transcript,
+            question,
+            answer,
           }),
         }
       );
@@ -372,7 +413,12 @@ const stopCamera = () => {
         );
       }
 
+      if (!data.evaluation) {
+        throw new Error("No evaluation received from backend");
+      }
+
       setEvaluation(data.evaluation);
+      return data.evaluation;
     } catch (error) {
       console.error(
         "Evaluation error:",
@@ -383,84 +429,166 @@ const stopCamera = () => {
         error.message ||
           "Unable to evaluate your answer."
       );
+      return null;
     } finally {
       setIsEvaluating(false);
     }
   };
 
   // ==============================
-  // NEXT QUESTION
+  // AUTOMATIC QUESTION FLOW
   // ==============================
 
-  const nextQuestion = async () => {
-    if (isLoading) return;
-
-    setIsLoading(true);
-
-    const requestData = {
-      role: role,
-      experience: experience,
-      skill: skill,
-      difficulty: difficulty,
-    };
-
-    console.log(
-      "Sending interview data:",
-      requestData
+  const requestNextQuestion = useCallback(async () => {
+    const response = await fetch(
+      "http://127.0.0.1:5000/api/generate-question",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role, experience, skill, difficulty }),
+      }
     );
 
-    try {
-      const response = await fetch(
-        "http://127.0.0.1:5000/api/generate-question",
-        {
-          method: "POST",
+    const data = await response.json();
 
-          headers: {
-            "Content-Type": "application/json",
-          },
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to generate next question");
+    }
 
-          body: JSON.stringify(requestData),
-        }
-      );
+    if (!data.question) {
+      throw new Error("No question received from backend");
+    }
 
-      const data = await response.json();
+    return data.question;
+  }, [role, experience, skill, difficulty]);
 
-      console.log(
-        "Backend response:",
-        data
-      );
+  useEffect(() => {
+    if (!isRecording || totalQuestions >= TOTAL_QUESTIONS) return;
 
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-            "Failed to generate next question"
-        );
-      }
+    const prefetchKey = `${totalQuestions}:${currentQuestion}`;
+    if (prefetchKeyRef.current === prefetchKey) return;
 
-      setCurrentQuestion(data.question);
+    prefetchKeyRef.current = prefetchKey;
+    setPrefetchedQuestion(null);
+    const request = requestNextQuestion()
+      .then((question) => {
+        prefetchedQuestionRef.current = question;
+        setPrefetchedQuestion(question);
+        return question;
+      })
+      .catch((error) => {
+        console.warn("Next question prefetch failed:", error);
+        prefetchedQuestionRef.current = null;
+        setPrefetchedQuestion(null);
+        return null;
+      });
 
-      // Increment question count when a new question is generated
-      setTotalQuestions((prev) => prev + 1);
+    prefetchPromiseRef.current = request;
+  }, [isRecording, totalQuestions, currentQuestion, requestNextQuestion]);
 
-      // Clear previous answer
+  const getNextQuestion = async () => {
+    if (prefetchedQuestionRef.current) {
+      return prefetchedQuestionRef.current;
+    }
+
+    if (prefetchPromiseRef.current) {
+      const question = await prefetchPromiseRef.current;
+      if (question) return question;
+    }
+
+    return requestNextQuestion();
+  };
+
+  const handleFinishInterview = (finalAnswers = answersRef.current, finalEvaluations = evaluationsRef.current) => {
+    navigate("/interview-complete", {
+      state: {
+        role,
+        experience,
+        skill,
+        difficulty,
+        questions: questionsRef.current,
+        answers: finalAnswers,
+        evaluations: finalEvaluations,
+        totalQuestions,
+        elapsedTime,
+      },
+    });
+  };
+
+  const saveEvaluationAndAdvance = async (answer, result) => {
+    const answerIndex = totalQuestions - 1;
+    answersRef.current = [...answersRef.current];
+    answersRef.current[answerIndex] = answer;
+    evaluationsRef.current = [...evaluationsRef.current];
+    evaluationsRef.current[answerIndex] = result;
+    setAnswers(answersRef.current);
+    setEvaluations(evaluationsRef.current);
+
+    if (totalQuestions === TOTAL_QUESTIONS) {
+        setIsPreparingNext(true);
+      advanceTimerRef.current = setTimeout(() => {
+        handleFinishInterview(answersRef.current, evaluationsRef.current);
+      }, 1000);
+      return;
+    }
+
+    setIsPreparingNext(true);
+    const nextQuestion = await getNextQuestion();
+    if (!nextQuestion) {
+      throw new Error("Unable to prepare the next question");
+    }
+
+    advanceTimerRef.current = setTimeout(() => {
+      prefetchedQuestionRef.current = null;
+      prefetchPromiseRef.current = null;
+      setPrefetchedQuestion(null);
+      questionsRef.current = [...questionsRef.current, nextQuestion];
+      setQuestions(questionsRef.current);
+      setCurrentQuestion(nextQuestion);
+      setTotalQuestions((previousTotal) => previousTotal + 1);
       setAudioURL(null);
-
       setTranscript("");
-
-      // Clear previous evaluation
       setEvaluation("");
-    } catch (error) {
-      console.error(
-        "Next question error:",
-        error
-      );
+      setIsPreparingNext(false);
+    }, 1000);
+  };
 
-      alert(
-        error.message ||
-          "Unable to generate next question."
-      );
+  const retryEvaluation = async () => {
+    if (processingRef.current || !transcript) return;
+
+    processingRef.current = true;
+    try {
+      const result = await evaluateCandidateAnswer();
+      if (result) await saveEvaluationAndAdvance(transcript, result);
+    } catch (error) {
+      console.error("Retry evaluation error:", error);
+      alert(error.message || "Unable to prepare the next question.");
+      setIsPreparingNext(false);
     } finally {
-      setIsLoading(false);
+      processingRef.current = false;
+    }
+  };
+
+  const processAnswer = async (audioBlob) => {
+    if (processingRef.current) return;
+
+    processingRef.current = true;
+
+    try {
+      const answer = await transcribeAudio(audioBlob);
+      if (!answer) return;
+
+      const result = await evaluateCandidateAnswer(currentQuestion, answer);
+      if (!result) return;
+      await saveEvaluationAndAdvance(answer, result);
+    } catch (error) {
+      console.error("Automatic interview flow error:", error);
+      alert(error.message || "Unable to prepare the next question.");
+      setIsPreparingNext(false);
+    } finally {
+      processingRef.current = false;
     }
   };
 
@@ -469,6 +597,15 @@ const stopCamera = () => {
   // ==============================
 
   const aiState = isSpeaking ? "speaking" : isRecording ? "listening" : "ready";
+  const processingStatus = isRecording
+    ? "Listening..."
+    : isTranscribing
+      ? "Transcribing your answer..."
+      : isEvaluating
+        ? "Evaluating your answer..."
+        : isPreparingNext
+          ? "Preparing next question..."
+          : "Ready for your answer";
   const aiStateLabel = isSpeaking
     ? "AI is speaking"
     : isRecording
@@ -571,6 +708,7 @@ const stopCamera = () => {
         {/* Question section */}
         <div className="question-section modern-question">
           <span className="question-label">LIVE</span>
+          <p>Question {totalQuestions} of {TOTAL_QUESTIONS}</p>
           <h2>{currentQuestion}</h2>
           {isSpeaking && <div className="speaking-highlight">🔊 AI is speaking...</div>}
         </div>
@@ -579,12 +717,12 @@ const stopCamera = () => {
         <div className="interview-control-panel">
           <div className="voice-section">
             {!isRecording ? (
-              <button className="record-button" onClick={startRecording}>🎤 Start Recording</button>
+              <button className="record-button" onClick={startRecording} disabled={isTranscribing || isEvaluating || isPreparingNext}>🎤 Start Recording</button>
             ) : (
-              <button className="record-button recording" onClick={stopRecording}>⏹ Stop Recording</button>
+              <button className="record-button recording" onClick={stopRecording} disabled={isTranscribing || isEvaluating}>⏹ Stop Recording</button>
             )}
 
-            <p>{isRecording ? "Recording your answer..." : "Click the button to record your answer."}</p>
+            <p>{processingStatus}</p>
 
             {audioURL && (
               <div className="audio-result">
@@ -600,13 +738,11 @@ const stopCamera = () => {
               </div>
             )}
 
-            {transcript && (
-              <div className="evaluation-action">
-                <button className="evaluate-button" onClick={evaluateCandidateAnswer} disabled={isEvaluating}>
-                  {isEvaluating ? "Evaluating..." : "🤖 Evaluate My Answer"}
-                </button>
-              </div>
-            )}
+            <div className="evaluation-action">
+              <button className="evaluate-button" onClick={retryEvaluation} disabled={!transcript || isTranscribing || isEvaluating || isPreparingNext}>
+                {isEvaluating ? "Evaluating..." : "🤖 Evaluate My Answer"}
+              </button>
+            </div>
 
             {evaluation && (
               <div className="evaluation-section">
@@ -645,7 +781,9 @@ const stopCamera = () => {
 
         {/* Action bar */}
         <div className="interview-actions action-bar">
-          <button className="next-button" onClick={nextQuestion} disabled={isLoading}>{isLoading ? "Generating..." : "Next Question →"}</button>
+          <button className="next-button" disabled>
+            {isPreparingNext ? (prefetchedQuestion ? "Starting next question..." : "Preparing next question...") : totalQuestions === TOTAL_QUESTIONS ? "Finishing interview..." : "Next question will start automatically"}
+          </button>
         </div>
 
       </div>
