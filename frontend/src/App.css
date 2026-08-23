@@ -1703,3 +1703,43 @@ body {
     width: 100%;
   }
 }
+
+/* Structured final performance report */
+.report-card { max-width: 1100px; text-align: left; }
+.report-card .complete-icon { margin-left: 0; font-size: 46px; color: #2f6b48; background: #e3f3d5; }
+.report-kicker, .report-label, .review-grid span, .review-answer span { color: #54834d; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.report-card h1 { margin-bottom: 4px; }
+.report-overview, .report-meta, .question-review, .improvement-section { margin-top: 24px; padding: 24px; border: 1px solid #dce8dc; border-radius: 14px; background: rgba(255,255,255,.72); }
+.overview-heading, .review-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.overview-heading h2, .section-title h2 { margin-top: 6px; color: #24362a; font-size: 22px; }
+.performance-level { padding: 8px 13px; border-radius: 999px; background: #d8f17a; color: #426332; font-weight: 800; }
+.score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 20px; }
+.score-card { padding: 18px; border-radius: 10px; background: #f0f8e8; }
+.score-card span, .score-card strong { display: block; }
+.score-card span { color: #65736a; font-size: 13px; }
+.score-card strong { margin-top: 7px; color: #294336; font-size: 25px; }
+.report-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.report-meta div { display: flex; flex-direction: column; gap: 5px; }
+.report-meta strong { color: #294336; font-size: 13px; }
+.report-meta span { color: #65736a; }
+.section-title { margin-bottom: 16px; }
+.question-review { background: #fff; }
+.review-heading h3 { color: #294336; font-size: 17px; }
+.review-heading strong { padding: 8px 12px; color: #426332; background: #eff8dd; border-radius: 8px; }
+.question-review h4 { margin: 16px 0; color: #24362a; font-size: 17px; line-height: 1.5; }
+.review-answer { padding: 15px; background: #f4f8f3; border-radius: 9px; }
+.review-answer p, .review-grid p, .improvement-section p { margin-top: 7px; color: #486052; line-height: 1.6; }
+.review-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px; }
+.review-grid > div { padding: 14px; background: #f8fbf7; border-radius: 9px; }
+.review-grid ul, .improvement-section ul { margin: 8px 0 0 18px; color: #486052; line-height: 1.6; }
+.review-grid .ideal-answer { grid-column: 1 / -1; background: #f0f8e8; }
+.empty-report { color: #65736a; }
+.improvement-section { background: #eff8dd; }
+.improvement-section h2 { color: #294336; }
+
+@media (max-width: 700px) {
+  .report-card { padding: 22px; }
+  .score-grid, .report-meta, .review-grid { grid-template-columns: 1fr; }
+  .review-grid .ideal-answer { grid-column: auto; }
+  .overview-heading { align-items: flex-start; flex-direction: column; }
+}

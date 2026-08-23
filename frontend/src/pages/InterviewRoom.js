@@ -1,6 +1,28 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+const normalizeEvaluation = (value) => {
+  const evaluation = value && typeof value === "object" ? value : {};
+  const score = Number.isInteger(evaluation.score) && evaluation.score >= 0 && evaluation.score <= 10
+    ? evaluation.score
+    : 0;
+  const toList = (items) => Array.isArray(items) ? items.filter((item) => typeof item === "string" && item.trim()) : [];
+
+  return {
+    score,
+    correctness: typeof evaluation.correctness === "string" ? evaluation.correctness : "Evaluation unavailable.",
+    strengths: toList(evaluation.strengths),
+    areas_to_improve: toList(evaluation.areas_to_improve),
+    feedback: typeof evaluation.feedback === "string" ? evaluation.feedback : "No feedback available.",
+    ideal_answer: typeof evaluation.ideal_answer === "string" ? evaluation.ideal_answer : "No ideal answer available."
+  };
+};
+
+const cleanEvaluationTranscript = (value) => value
+  .replace(/\b(?:um+|uh+|actually)\b(?:\s+\b(?:um+|uh+|actually)\b)+/gi, " ")
+  .replace(/\s+/g, " ")
+  .trim();
+
 function InterviewRoom() {
   const location = useLocation();
   const TOTAL_QUESTIONS = 5;
@@ -395,6 +417,9 @@ const stopCamera = () => {
           body: JSON.stringify({
             question,
             answer,
+            role,
+            experience,
+            skill,
           }),
         }
       );
@@ -417,8 +442,9 @@ const stopCamera = () => {
         throw new Error("No evaluation received from backend");
       }
 
-      setEvaluation(data.evaluation);
-      return data.evaluation;
+      const normalizedEvaluation = normalizeEvaluation(data.evaluation);
+      setEvaluation(normalizedEvaluation);
+      return normalizedEvaluation;
     } catch (error) {
       console.error(
         "Evaluation error:",
@@ -555,22 +581,6 @@ const stopCamera = () => {
     }, 1000);
   };
 
-  const retryEvaluation = async () => {
-    if (processingRef.current || !transcript) return;
-
-    processingRef.current = true;
-    try {
-      const result = await evaluateCandidateAnswer();
-      if (result) await saveEvaluationAndAdvance(transcript, result);
-    } catch (error) {
-      console.error("Retry evaluation error:", error);
-      alert(error.message || "Unable to prepare the next question.");
-      setIsPreparingNext(false);
-    } finally {
-      processingRef.current = false;
-    }
-  };
-
   const processAnswer = async (audioBlob) => {
     if (processingRef.current) return;
 
@@ -580,7 +590,13 @@ const stopCamera = () => {
       const answer = await transcribeAudio(audioBlob);
       if (!answer) return;
 
-      const result = await evaluateCandidateAnswer(currentQuestion, answer);
+      const evaluationAnswer = cleanEvaluationTranscript(answer);
+      if (evaluationAnswer.length < 3 || evaluationAnswer.split(" ").length < 2) {
+        alert("Your answer was too short to evaluate. Please record it again.");
+        return;
+      }
+
+      const result = await evaluateCandidateAnswer(currentQuestion, evaluationAnswer);
       if (!result) return;
       await saveEvaluationAndAdvance(answer, result);
     } catch (error) {
@@ -738,12 +754,6 @@ const stopCamera = () => {
               </div>
             )}
 
-            <div className="evaluation-action">
-              <button className="evaluate-button" onClick={retryEvaluation} disabled={!transcript || isTranscribing || isEvaluating || isPreparingNext}>
-                {isEvaluating ? "Evaluating..." : "🤖 Evaluate My Answer"}
-              </button>
-            </div>
-
             {evaluation && (
               <div className="evaluation-section">
                 <h3>🤖 AI Evaluation</h3>
@@ -755,23 +765,28 @@ const stopCamera = () => {
 
                 <div className="evaluation-content">
                   <div className="evaluation-box">
+                    <h4>Accuracy</h4>
+                    <p>{evaluation.correctness || "No correctness assessment available."}</p>
+                  </div>
+
+                  <div className="evaluation-box">
                     <h4>💬 Feedback</h4>
                     <p>{evaluation.feedback || "No feedback available."}</p>
                   </div>
 
                   <div className="evaluation-box">
                     <h4>✅ Strengths</h4>
-                    <p>{evaluation.strengths || "No strengths provided."}</p>
+                    {evaluation.strengths?.length ? <ul>{evaluation.strengths.map((item, index) => <li key={index}>{item}</li>)}</ul> : <p>No strengths provided.</p>}
                   </div>
 
                   <div className="evaluation-box">
-                    <h4>⚠️ Weaknesses</h4>
-                    <p>{evaluation.weaknesses || "No weaknesses provided."}</p>
+                    <h4>⚠️ Areas to Improve</h4>
+                    {evaluation.areas_to_improve?.length ? <ul>{evaluation.areas_to_improve.map((item, index) => <li key={index}>{item}</li>)}</ul> : <p>No improvement areas provided.</p>}
                   </div>
 
                   <div className="evaluation-box">
-                    <h4>💡 Improvement</h4>
-                    <p>{evaluation.improvement || "No improvement suggestions available."}</p>
+                    <h4>💡 Ideal Answer</h4>
+                    <p>{evaluation.ideal_answer || "No ideal answer available."}</p>
                   </div>
                 </div>
               </div>

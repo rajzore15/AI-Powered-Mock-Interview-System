@@ -115,7 +115,19 @@ def transcribe_audio():
 
         print("Transcribing audio...")
 
-        result = model.transcribe(filepath)
+        result = model.transcribe(
+            filepath,
+            language="en",
+            task="transcribe",
+            temperature=0,
+            condition_on_previous_text=True,
+            initial_prompt=(
+                "Technical interview vocabulary: Python, Java, JavaScript, React, SQL, "
+                "API, Flask, FastAPI, database, backend, frontend, function, class, object, "
+                "algorithm, data structure, machine learning, artificial intelligence."
+            ),
+            fp16=False
+        )
 
         transcript = result["text"].strip()
 
@@ -218,6 +230,9 @@ def evaluate_answer_api():
 
     question = data.get("question")
     answer = data.get("answer")
+    role = data.get("role", "")
+    experience = data.get("experience", "")
+    skill = data.get("skill", "")
 
     # Validate question
 
@@ -241,7 +256,10 @@ def evaluate_answer_api():
 
         evaluation = evaluate_answer(
             question,
-            answer
+            answer,
+            role=role,
+            experience=experience,
+            skill=skill
         )
 
         print("Evaluation completed.")
