@@ -1,8 +1,12 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from io import BytesIO
 import os
+import time
 import uuid
 import whisper
+from docx import Document
+from pypdf import PdfReader
 
 from services.gemini_service import (
     generate_interview_question,
@@ -18,8 +22,38 @@ CORS(app)
 # ==========================================
 
 UPLOAD_FOLDER = "uploads"
+MAX_RESUME_SIZE = 10 * 1024 * 1024
+resume_contexts = {}
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+def extract_resume_text(resume, extension):
+    content = resume.read()
+    if not content:
+        raise ValueError("The selected resume is empty")
+
+    if extension == ".pdf":
+        reader = PdfReader(BytesIO(content))
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    else:
+        document = Document(BytesIO(content))
+        text = "\n".join(paragraph.text for paragraph in document.paragraphs)
+
+    cleaned = " ".join(text.split())
+    if not cleaned:
+        raise ValueError("No readable text was found in the resume")
+    return cleaned[:12000]
+
+
+def get_resume_context(resume_id):
+    if not resume_id:
+        return None
+    context = resume_contexts.get(resume_id)
+    if context and context["expires_at"] > time.time():
+        return context["text"]
+    resume_contexts.pop(resume_id, None)
+    return None
 
 
 # ==========================================
@@ -79,6 +113,40 @@ def upload_audio():
         "message": "Audio uploaded successfully",
         "filename": filename
     })
+
+
+@app.route("/api/upload-resume", methods=["POST"])
+def upload_resume():
+    resume = request.files.get("resume")
+    if not resume or not resume.filename:
+        return jsonify({"error": "Please choose a resume file"}), 400
+
+    extension = os.path.splitext(resume.filename)[1].lower()
+    if extension not in {".pdf", ".docx"}:
+        return jsonify({"error": "Only PDF and DOCX resumes are supported"}), 400
+
+    resume.seek(0, os.SEEK_END)
+    size = resume.tell()
+    resume.seek(0)
+    if size == 0:
+        return jsonify({"error": "The selected resume is empty"}), 400
+    if size > MAX_RESUME_SIZE:
+        return jsonify({"error": "Resume must be 10 MB or smaller"}), 400
+
+    try:
+        text = extract_resume_text(resume, extension)
+        resume_id = uuid.uuid4().hex
+        resume_contexts[resume_id] = {
+            "text": text,
+            "expires_at": time.time() + 60 * 60,
+        }
+        return jsonify({"resume_id": resume_id})
+    except Exception as error:
+        print("Resume extraction error:", str(error))
+        return jsonify({
+            "error": "Unable to read this resume",
+            "details": "The file may be corrupt or contain no readable text."
+        }), 400
 
 
 # ==========================================
@@ -172,6 +240,7 @@ def generate_question():
     experience = data.get("experience")
     skill = data.get("skill")
     difficulty = data.get("difficulty")
+    resume_id = data.get("resume_id")
 
     # Validate interview details
 
@@ -194,7 +263,8 @@ def generate_question():
             role,
             experience,
             skill,
-            difficulty
+            difficulty,
+            resume_context=get_resume_context(resume_id)
         )
 
         print("Generated question:", question)

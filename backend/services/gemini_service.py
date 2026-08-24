@@ -97,8 +97,20 @@ def generate_interview_question(
     role,
     experience,
     skill,
-    difficulty
+    difficulty,
+    resume_context=None
 ):
+
+    resume_guidance = ""
+    if resume_context:
+        resume_guidance = f"""
+Relevant resume context (use only details present here):
+{resume_context}
+
+Use relevant skills, projects, technologies, or technical experience from this context
+to personalize the question when they fit the selected role and primary skill. Do not
+invent details, ask only about the resume, or expose unnecessary personal information.
+"""
 
     prompt = f"""
 You are an AI technical interviewer.
@@ -109,6 +121,7 @@ Job Role: {role}
 Experience Level: {experience}
 Primary Skill: {skill}
 Difficulty: {difficulty}
+{resume_guidance}
 
 Requirements:
 - Ask only one question.

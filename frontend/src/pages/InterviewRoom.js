@@ -41,6 +41,7 @@ const [cameraStream, setCameraStream] = useState(null);
   const experience = interviewData.experience || "Fresher";
   const skill = interviewData.skill || "Python";
   const difficulty = interviewData.difficulty || "Easy";
+  const resumeId = interviewData.resumeId || null;
 
   const [currentQuestion, setCurrentQuestion] = useState(
     interviewData.question ||
@@ -473,7 +474,7 @@ const stopCamera = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ role, experience, skill, difficulty }),
+        body: JSON.stringify({ role, experience, skill, difficulty, resume_id: resumeId }),
       }
     );
 
@@ -488,7 +489,7 @@ const stopCamera = () => {
     }
 
     return data.question;
-  }, [role, experience, skill, difficulty]);
+  }, [role, experience, skill, difficulty, resumeId]);
 
   useEffect(() => {
     if (!isRecording || totalQuestions >= TOTAL_QUESTIONS) return;
