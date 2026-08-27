@@ -6,6 +6,7 @@ import "./App.css";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import InterviewSetup from "./pages/InterviewSetup";
+import InterviewCheck from "./pages/InterviewCheck";
 import InterviewRoom from "./pages/InterviewRoom";
 import InterviewComplete from "./pages/InterviewComplete";
 
@@ -30,6 +31,11 @@ function App() {
         <Route
           path="/interview-room"
           element={<InterviewRoom />}
+        />
+
+        <Route
+          path="/interview-check"
+          element={<InterviewCheck />}
         />
 
         <Route

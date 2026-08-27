@@ -65,6 +65,7 @@ const [cameraStream, setCameraStream] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const timerRef = useRef(null);
+  const speechRequestRef = useRef(0);
 
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -89,39 +90,53 @@ const [cameraStream, setCameraStream] = useState(null);
   // AI VOICE
   // ==============================
 
-  const speakQuestion = (text) => {
-    if ("speechSynthesis" in window && text) {
-      window.speechSynthesis.cancel();
+  const speakQuestion = useCallback((text) => {
+    if (!("speechSynthesis" in window) || !text) return;
 
+    const synthesis = window.speechSynthesis;
+    synthesis.cancel();
+    setIsSpeaking(false);
+    const requestId = speechRequestRef.current + 1;
+    speechRequestRef.current = requestId;
+
+    const speak = () => {
+      if (requestId !== speechRequestRef.current) return;
+      const voices = synthesis.getVoices();
+      const englishVoices = voices.filter((voice) => /^en(-|_|$)/i.test(voice.lang));
+      const femaleVoice = englishVoices.find((voice) => /female|samantha|karen|victoria|zira|aria|jenny|libby|susan|moira/i.test(voice.name));
+      const selectedVoice = femaleVoice || englishVoices.find((voice) => /natural|neural|google|microsoft|enhanced/i.test(voice.name)) || englishVoices[0] || voices[0];
       const speech = new SpeechSynthesisUtterance(text);
 
-      speech.rate = 0.9;
+      if (selectedVoice) speech.voice = selectedVoice;
+      speech.rate = 0.88;
       speech.pitch = 1;
       speech.volume = 1;
+      speech.onstart = () => setIsSpeaking(true);
+      speech.onend = () => setIsSpeaking(false);
+      speech.onerror = () => setIsSpeaking(false);
+      speech.oncancel = () => setIsSpeaking(false);
+      synthesis.speak(speech);
+    };
 
-      speech.onstart = () => {
-        setIsSpeaking(true);
-      };
-
-      speech.onend = () => {
-        setIsSpeaking(false);
-      };
-
-      speech.onerror = () => {
-        setIsSpeaking(false);
-      };
-
-      speech.oncancel = () => {
-        setIsSpeaking(false);
-      };
-
-      window.speechSynthesis.speak(speech);
+    if (synthesis.getVoices().length) {
+      speak();
+    } else {
+      synthesis.addEventListener("voiceschanged", speak, { once: true });
     }
-  };
+  }, []);
 
   useEffect(() => {
     speakQuestion(currentQuestion);
-  }, [currentQuestion]);
+    return () => {
+      speechRequestRef.current += 1;
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    };
+  }, [currentQuestion, speakQuestion]);
+
+  useEffect(() => () => {
+    speechRequestRef.current += 1;
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }, []);
 
   // ==============================
   // STATES

@@ -101,8 +101,7 @@ function InterviewSetup() {
 
       console.log("Generated question:", data.question);
 
-      // Go to Interview Room with all interview information
-      navigate("/interview-room", {
+      navigate("/interview-check", {
         state: {
           role,
           experience,

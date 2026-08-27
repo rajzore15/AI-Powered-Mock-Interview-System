@@ -127,7 +127,11 @@ Requirements:
 - Ask only one question.
 - Make it relevant to the candidate's role and skill.
 - Do not provide the answer.
-- Keep the question clear and suitable for an interview.
+- Keep it short, clear, natural, and suitable for speaking aloud.
+- Focus on one concept at a time and usually use one sentence.
+- Use no more than approximately 25 words unless brief context is genuinely necessary.
+- Do not combine multiple questions or add an explanation before the question.
+- Return only the question text, without labels, bullets, or quotation marks.
 """
 
     try:
