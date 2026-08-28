@@ -96,8 +96,16 @@ const [cameraStream, setCameraStream] = useState(null);
     const synthesis = window.speechSynthesis;
     synthesis.cancel();
     setIsSpeaking(false);
+    setInterviewStatus("🔊 AI Interviewer is speaking...");
+
     const requestId = speechRequestRef.current + 1;
     speechRequestRef.current = requestId;
+
+    const completeSpeech = (message = "🎤 Your turn - Start answering") => {
+      if (requestId !== speechRequestRef.current) return;
+      setIsSpeaking(false);
+      setInterviewStatus(message);
+    };
 
     const speak = () => {
       if (requestId !== speechRequestRef.current) return;
@@ -111,10 +119,14 @@ const [cameraStream, setCameraStream] = useState(null);
       speech.rate = 0.88;
       speech.pitch = 1;
       speech.volume = 1;
-      speech.onstart = () => setIsSpeaking(true);
-      speech.onend = () => setIsSpeaking(false);
-      speech.onerror = () => setIsSpeaking(false);
-      speech.oncancel = () => setIsSpeaking(false);
+      speech.onstart = () => {
+        if (requestId !== speechRequestRef.current) return;
+        setIsSpeaking(true);
+        setInterviewStatus("🔊 AI Interviewer is speaking...");
+      };
+      speech.onend = () => completeSpeech("🎤 Your turn - Start answering");
+      speech.onerror = () => completeSpeech("🎤 Your turn - Start answering");
+      speech.oncancel = () => completeSpeech("🎤 Your turn - Start answering");
       synthesis.speak(speech);
     };
 
@@ -144,6 +156,7 @@ const [cameraStream, setCameraStream] = useState(null);
 
   const [isPreparingNext, setIsPreparingNext] = useState(false);
   const [prefetchedQuestion, setPrefetchedQuestion] = useState(null);
+  const [interviewStatus, setInterviewStatus] = useState("🔊 AI Interviewer is speaking...");
 
   const [isRecording, setIsRecording] = useState(false);
 
@@ -211,7 +224,7 @@ const stopCamera = () => {
   // ==============================
 
   const startRecording = async () => {
-    if (processingRef.current || isRecording || isPreparingNext) return;
+    if (isSpeaking || processingRef.current || isRecording || isPreparingNext || isTranscribing || isEvaluating) return;
 
     try {
       const stream =
@@ -249,8 +262,8 @@ const stopCamera = () => {
       recorder.start();
 
       setMediaRecorder(recorder);
-
       setIsRecording(true);
+      setInterviewStatus("🎤 Listening to your answer...");
 
       setAudioURL(null);
       setTranscript("");
@@ -350,6 +363,7 @@ const stopCamera = () => {
 
   const transcribeAudio = async (audioBlob) => {
     setIsTranscribing(true);
+    setInterviewStatus("⏳ Transcribing your answer...");
 
     try {
       const formData = new FormData();
@@ -419,6 +433,7 @@ const stopCamera = () => {
     if (isEvaluating || isTranscribing) return;
 
     setIsEvaluating(true);
+    setInterviewStatus("🤖 AI is evaluating your answer...");
 
     try {
       const response = await fetch(
@@ -569,13 +584,15 @@ const stopCamera = () => {
     setEvaluations(evaluationsRef.current);
 
     if (totalQuestions === TOTAL_QUESTIONS) {
-        setIsPreparingNext(true);
+      setInterviewStatus("✓ Answer evaluated");
+      setIsPreparingNext(true);
       advanceTimerRef.current = setTimeout(() => {
         handleFinishInterview(answersRef.current, evaluationsRef.current);
       }, 1000);
       return;
     }
 
+    setInterviewStatus("✓ Answer evaluated");
     setIsPreparingNext(true);
     const nextQuestion = await getNextQuestion();
     if (!nextQuestion) {
@@ -583,18 +600,25 @@ const stopCamera = () => {
     }
 
     advanceTimerRef.current = setTimeout(() => {
-      prefetchedQuestionRef.current = null;
-      prefetchPromiseRef.current = null;
-      setPrefetchedQuestion(null);
-      questionsRef.current = [...questionsRef.current, nextQuestion];
-      setQuestions(questionsRef.current);
-      setCurrentQuestion(nextQuestion);
-      setTotalQuestions((previousTotal) => previousTotal + 1);
-      setAudioURL(null);
-      setTranscript("");
-      setEvaluation("");
-      setIsPreparingNext(false);
-    }, 1000);
+      setInterviewStatus("⏳ Preparing next question...");
+    }, 250);
+
+    advanceTimerRef.current = setTimeout(() => {
+      setInterviewStatus("✓ Next question ready");
+      window.setTimeout(() => {
+        prefetchedQuestionRef.current = null;
+        prefetchPromiseRef.current = null;
+        setPrefetchedQuestion(null);
+        questionsRef.current = [...questionsRef.current, nextQuestion];
+        setQuestions(questionsRef.current);
+        setCurrentQuestion(nextQuestion);
+        setTotalQuestions((previousTotal) => previousTotal + 1);
+        setAudioURL(null);
+        setTranscript("");
+        setEvaluation("");
+        setIsPreparingNext(false);
+      }, 700);
+    }, 1200);
   };
 
   const processAnswer = async (audioBlob) => {
@@ -629,15 +653,17 @@ const stopCamera = () => {
   // ==============================
 
   const aiState = isSpeaking ? "speaking" : isRecording ? "listening" : "ready";
-  const processingStatus = isRecording
-    ? "Listening..."
-    : isTranscribing
-      ? "Transcribing your answer..."
-      : isEvaluating
-        ? "Evaluating your answer..."
-        : isPreparingNext
-          ? "Preparing next question..."
-          : "Ready for your answer";
+  const processingStatus = isSpeaking
+    ? "🔊 AI Interviewer is speaking..."
+    : isRecording
+      ? "🎤 Listening to your answer..."
+      : isTranscribing
+        ? "⏳ Transcribing your answer..."
+        : isEvaluating
+          ? "🤖 AI is evaluating your answer..."
+          : isPreparingNext
+            ? "⏳ Preparing next question..."
+            : interviewStatus || "🎤 Your turn - Start answering";
   const aiStateLabel = isSpeaking
     ? "AI is speaking"
     : isRecording
@@ -647,15 +673,30 @@ const stopCamera = () => {
     ? `${difficulty} technical round · ${role}`
     : "Technical round · Python Developer";
   const bannerLabel = isSpeaking
-    ? "The interviewer is asking your question"
+    ? "AI Interviewer"
     : isRecording
-      ? "Listening to your answer"
-      : "Please wait";
-  const bannerMessage = isSpeaking
-    ? "The interviewer is asking your question"
+      ? "Recording"
+      : isTranscribing
+        ? "Processing"
+        : isEvaluating
+          ? "Evaluating"
+          : isPreparingNext
+            ? "Transition"
+            : "Ready";
+  const bannerMessage = processingStatus;
+  const canStartRecording = !isSpeaking && !isRecording && !isTranscribing && !isEvaluating && !isPreparingNext && !processingRef.current;
+  const canStopRecording = isRecording && !isTranscribing && !isEvaluating && !isPreparingNext && !processingRef.current;
+  const recordButtonLabel = isSpeaking
+    ? "Please wait for AI..."
     : isRecording
-      ? "Your answer is being recorded"
-      : "The interviewer is ready for your answer";
+      ? "Stop Recording"
+      : isTranscribing
+        ? "Transcribing..."
+        : isEvaluating
+          ? "Evaluating..."
+          : isPreparingNext
+            ? "Preparing..."
+            : "Start Answer";
 
   return (
     <div className="interview-room modern">
@@ -749,9 +790,9 @@ const stopCamera = () => {
         <div className="interview-control-panel">
           <div className="voice-section">
             {!isRecording ? (
-              <button className="record-button" onClick={startRecording} disabled={isTranscribing || isEvaluating || isPreparingNext}>🎤 Start Recording</button>
+              <button className="record-button" onClick={startRecording} disabled={!canStartRecording}>🎤 {recordButtonLabel}</button>
             ) : (
-              <button className="record-button recording" onClick={stopRecording} disabled={isTranscribing || isEvaluating}>⏹ Stop Recording</button>
+              <button className="record-button recording" onClick={stopRecording} disabled={!canStopRecording}>⏹ {recordButtonLabel}</button>
             )}
 
             <p>{processingStatus}</p>
