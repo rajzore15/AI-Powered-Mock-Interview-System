@@ -496,7 +496,21 @@ const stopCamera = () => {
   // AUTOMATIC QUESTION FLOW
   // ==============================
 
-  const requestNextQuestion = useCallback(async () => {
+  const requestNextQuestion = useCallback(async (previousContext = null) => {
+    const requestPayload = {
+      role,
+      experience,
+      skill,
+      difficulty,
+      resume_id: resumeId,
+    };
+
+    // Add adaptive context if available (only from question 2 onwards)
+    if (previousContext && previousContext.previous_questions && previousContext.previous_questions.length > 0) {
+      requestPayload.previous_questions = previousContext.previous_questions;
+      requestPayload.previous_evaluations = previousContext.previous_evaluations || [];
+    }
+
     const response = await fetch(
       "http://127.0.0.1:5000/api/generate-question",
       {
@@ -504,7 +518,7 @@ const stopCamera = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ role, experience, skill, difficulty, resume_id: resumeId }),
+        body: JSON.stringify(requestPayload),
       }
     );
 
@@ -529,7 +543,14 @@ const stopCamera = () => {
 
     prefetchKeyRef.current = prefetchKey;
     setPrefetchedQuestion(null);
-    const request = requestNextQuestion()
+    
+    // Build adaptive context from previous questions and evaluations
+    const adaptiveContext = {
+      previous_questions: questionsRef.current.slice(0, -1), // All questions except current
+      previous_evaluations: evaluationsRef.current, // All evaluations so far
+    };
+    
+    const request = requestNextQuestion(adaptiveContext)
       .then((question) => {
         prefetchedQuestionRef.current = question;
         setPrefetchedQuestion(question);

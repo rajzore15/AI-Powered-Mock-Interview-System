@@ -98,7 +98,9 @@ def generate_interview_question(
     experience,
     skill,
     difficulty,
-    resume_context=None
+    resume_context=None,
+    previous_questions=None,
+    previous_evaluations=None
 ):
 
     resume_guidance = ""
@@ -112,6 +114,68 @@ to personalize the question when they fit the selected role and primary skill. D
 invent details, ask only about the resume, or expose unnecessary personal information.
 """
 
+    adaptive_context = ""
+    adjusted_difficulty = difficulty
+    
+    # Build adaptive context if previous performance data is available
+    if previous_questions and len(previous_questions) > 0 and previous_evaluations and len(previous_evaluations) > 0:
+        # Calculate average score from previous evaluations
+        scores = [eval.get("score", 0) if isinstance(eval, dict) else 0 for eval in previous_evaluations]
+        avg_score = sum(scores) / len(scores) if scores else 0
+        last_score = scores[-1] if scores else 0
+        
+        # Identify weaknesses and strengths from evaluations
+        weaknesses = []
+        strengths = []
+        for eval in previous_evaluations:
+            if isinstance(eval, dict):
+                if "areas_to_improve" in eval and eval["areas_to_improve"]:
+                    for area in eval["areas_to_improve"]:
+                        if isinstance(area, str) and area.strip():
+                            weaknesses.append(area.strip())
+                if "strengths" in eval and eval["strengths"]:
+                    for strength in eval["strengths"]:
+                        if isinstance(strength, str) and strength.strip():
+                            strengths.append(strength.strip())
+        
+        # Adaptive difficulty logic
+        if last_score >= 8:
+            adjusted_difficulty = "Hard" if difficulty in ["Medium", "Easy"] else difficulty
+            difficulty_guidance = "The candidate performed well on the last question. Generate a slightly more challenging question to test deeper technical understanding."
+        elif last_score >= 5:
+            difficulty_guidance = "The candidate showed moderate performance. Generate a question around the same difficulty level but testing understanding from a different angle or context."
+            adjusted_difficulty = difficulty
+        else:
+            adjusted_difficulty = "Easy" if difficulty in ["Hard", "Medium"] else difficulty
+            difficulty_guidance = "The candidate struggled with the last question. Generate a simpler or more foundational question. If they showed a specific weakness, test that concept from a different angle to help them improve."
+        
+        # Build previous questions list for context
+        prev_questions_str = "\n".join([f"Q{i+1}: {q}" for i, q in enumerate(previous_questions)])
+        
+        # Build weaknesses/strengths context
+        weaknesses_str = ""
+        if weaknesses:
+            weaknesses_str = f"\nIdentified weak areas (test from different angles): {', '.join(set(weaknesses[:3]))}"
+        
+        strengths_str = ""
+        if strengths:
+            strengths_str = f"\nDemonstrated strengths: {', '.join(set(strengths[:3]))}"
+        
+        adaptive_context = f"""
+ADAPTIVE INTERVIEW CONTEXT:
+
+Previous questions:
+{prev_questions_str}
+
+Performance summary:
+- Last answer score: {last_score}/10
+- Average score: {avg_score:.1f}/10{weaknesses_str}{strengths_str}
+
+{difficulty_guidance}
+
+CRITICAL: Do not repeat or closely rephrase any of the previous questions. Ask a completely new question that tests a different aspect of the candidate's knowledge.
+"""
+
     prompt = f"""
 You are an AI technical interviewer.
 
@@ -120,8 +184,8 @@ Generate ONE interview question for the following candidate:
 Job Role: {role}
 Experience Level: {experience}
 Primary Skill: {skill}
-Difficulty: {difficulty}
-{resume_guidance}
+Difficulty: {adjusted_difficulty}
+{resume_guidance}{adaptive_context}
 
 Requirements:
 - Ask only one question.
