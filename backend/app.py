@@ -243,6 +243,9 @@ def generate_question():
     resume_id = data.get("resume_id")
     previous_questions = data.get("previous_questions", [])
     previous_evaluations = data.get("previous_evaluations", [])
+    previous_question = data.get("previous_question")
+    previous_answer = data.get("previous_answer")
+    previous_evaluation = data.get("previous_evaluation")
 
     # Validate interview details
 
@@ -268,7 +271,10 @@ def generate_question():
             difficulty,
             resume_context=get_resume_context(resume_id),
             previous_questions=previous_questions if previous_questions else None,
-            previous_evaluations=previous_evaluations if previous_evaluations else None
+            previous_evaluations=previous_evaluations if previous_evaluations else None,
+            previous_question=previous_question,
+            previous_answer=previous_answer,
+            previous_evaluation=previous_evaluation
         )
 
         print("Generated question:", question)

@@ -57,9 +57,6 @@ const [cameraStream, setCameraStream] = useState(null);
   const answersRef = useRef([]);
   const evaluationsRef = useRef([]);
   const processingRef = useRef(false);
-  const prefetchKeyRef = useRef(null);
-  const prefetchedQuestionRef = useRef(null);
-  const prefetchPromiseRef = useRef(null);
   const advanceTimerRef = useRef(null);
 
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -155,7 +152,6 @@ const [cameraStream, setCameraStream] = useState(null);
   // ==============================
 
   const [isPreparingNext, setIsPreparingNext] = useState(false);
-  const [prefetchedQuestion, setPrefetchedQuestion] = useState(null);
   const [interviewStatus, setInterviewStatus] = useState("🔊 AI Interviewer is speaking...");
 
   const [isRecording, setIsRecording] = useState(false);
@@ -511,6 +507,12 @@ const stopCamera = () => {
       requestPayload.previous_evaluations = previousContext.previous_evaluations || [];
     }
 
+    if (previousContext?.previous_question && previousContext?.previous_answer && previousContext?.previous_evaluation) {
+      requestPayload.previous_question = previousContext.previous_question;
+      requestPayload.previous_answer = previousContext.previous_answer;
+      requestPayload.previous_evaluation = previousContext.previous_evaluation;
+    }
+
     const response = await fetch(
       "http://127.0.0.1:5000/api/generate-question",
       {
@@ -535,48 +537,8 @@ const stopCamera = () => {
     return data.question;
   }, [role, experience, skill, difficulty, resumeId]);
 
-  useEffect(() => {
-    if (!isRecording || totalQuestions >= TOTAL_QUESTIONS) return;
-
-    const prefetchKey = `${totalQuestions}:${currentQuestion}`;
-    if (prefetchKeyRef.current === prefetchKey) return;
-
-    prefetchKeyRef.current = prefetchKey;
-    setPrefetchedQuestion(null);
-    
-    // Build adaptive context from previous questions and evaluations
-    const adaptiveContext = {
-      previous_questions: questionsRef.current.slice(0, -1), // All questions except current
-      previous_evaluations: evaluationsRef.current, // All evaluations so far
-    };
-    
-    const request = requestNextQuestion(adaptiveContext)
-      .then((question) => {
-        prefetchedQuestionRef.current = question;
-        setPrefetchedQuestion(question);
-        return question;
-      })
-      .catch((error) => {
-        console.warn("Next question prefetch failed:", error);
-        prefetchedQuestionRef.current = null;
-        setPrefetchedQuestion(null);
-        return null;
-      });
-
-    prefetchPromiseRef.current = request;
-  }, [isRecording, totalQuestions, currentQuestion, requestNextQuestion]);
-
-  const getNextQuestion = async () => {
-    if (prefetchedQuestionRef.current) {
-      return prefetchedQuestionRef.current;
-    }
-
-    if (prefetchPromiseRef.current) {
-      const question = await prefetchPromiseRef.current;
-      if (question) return question;
-    }
-
-    return requestNextQuestion();
+  const getNextQuestion = async (previousContext) => {
+    return requestNextQuestion(previousContext);
   };
 
   const handleFinishInterview = (finalAnswers = answersRef.current, finalEvaluations = evaluationsRef.current) => {
@@ -595,7 +557,7 @@ const stopCamera = () => {
     });
   };
 
-  const saveEvaluationAndAdvance = async (answer, result) => {
+  const saveEvaluationAndAdvance = async (answer, result, answerForQuestion) => {
     const answerIndex = totalQuestions - 1;
     answersRef.current = [...answersRef.current];
     answersRef.current[answerIndex] = answer;
@@ -615,7 +577,13 @@ const stopCamera = () => {
 
     setInterviewStatus("✓ Answer evaluated");
     setIsPreparingNext(true);
-    const nextQuestion = await getNextQuestion();
+    const nextQuestion = await getNextQuestion({
+      previous_questions: questionsRef.current,
+      previous_evaluations: evaluationsRef.current,
+      previous_question: currentQuestion,
+      previous_answer: answerForQuestion,
+      previous_evaluation: result,
+    });
     if (!nextQuestion) {
       throw new Error("Unable to prepare the next question");
     }
@@ -627,9 +595,6 @@ const stopCamera = () => {
     advanceTimerRef.current = setTimeout(() => {
       setInterviewStatus("✓ Next question ready");
       window.setTimeout(() => {
-        prefetchedQuestionRef.current = null;
-        prefetchPromiseRef.current = null;
-        setPrefetchedQuestion(null);
         questionsRef.current = [...questionsRef.current, nextQuestion];
         setQuestions(questionsRef.current);
         setCurrentQuestion(nextQuestion);
@@ -659,7 +624,7 @@ const stopCamera = () => {
 
       const result = await evaluateCandidateAnswer(currentQuestion, evaluationAnswer);
       if (!result) return;
-      await saveEvaluationAndAdvance(answer, result);
+      await saveEvaluationAndAdvance(answer, result, evaluationAnswer);
     } catch (error) {
       console.error("Automatic interview flow error:", error);
       alert(error.message || "Unable to prepare the next question.");
@@ -875,7 +840,7 @@ const stopCamera = () => {
         {/* Action bar */}
         <div className="interview-actions action-bar">
           <button className="next-button" disabled>
-            {isPreparingNext ? (prefetchedQuestion ? "Starting next question..." : "Preparing next question...") : totalQuestions === TOTAL_QUESTIONS ? "Finishing interview..." : "Next question will start automatically"}
+            {isPreparingNext ? "Preparing next question..." : totalQuestions === TOTAL_QUESTIONS ? "Finishing interview..." : "Next question will start automatically"}
           </button>
         </div>
 

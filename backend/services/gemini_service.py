@@ -73,7 +73,7 @@ FALLBACK_QUESTIONS = {
 # Get Fallback Question
 # ==========================================
 
-def get_fallback_question(skill):
+def get_fallback_question(skill, previous_questions=None):
 
     questions = FALLBACK_QUESTIONS.get(
         skill,
@@ -84,9 +84,18 @@ def get_fallback_question(skill):
         ]
     )
 
-    index = int(time.time()) % len(questions)
+    previous = {
+        re.sub(r"[^a-z0-9\s]", " ", str(question).lower()).strip()
+        for question in (previous_questions or [])
+    }
+    available_questions = [
+        question for question in questions
+        if re.sub(r"[^a-z0-9\s]", " ", question.lower()).strip() not in previous
+    ] or questions
 
-    return questions[index]
+    index = int(time.time()) % len(available_questions)
+
+    return available_questions[index]
 
 
 # ==========================================
@@ -100,7 +109,10 @@ def generate_interview_question(
     difficulty,
     resume_context=None,
     previous_questions=None,
-    previous_evaluations=None
+    previous_evaluations=None,
+    previous_question=None,
+    previous_answer=None,
+    previous_evaluation=None
 ):
 
     resume_guidance = ""
@@ -116,6 +128,24 @@ invent details, ask only about the resume, or expose unnecessary personal inform
 
     adaptive_context = ""
     adjusted_difficulty = difficulty
+
+    answer_context = ""
+    if previous_question and previous_answer and previous_evaluation:
+        answer_context = f"""
+MOST RECENT ANSWER (use this to decide whether a follow-up is useful):
+Question: {previous_question}
+Answer: {previous_answer}
+Evaluation: {json.dumps(previous_evaluation)}
+
+Choose exactly one direction for the next question:
+- FOLLOW-UP: Use this only when the answer contains a useful claim, example, ambiguity,
+  or resume-relevant detail that can be tested more deeply. Ask about one direct detail,
+  reasoning step, practical use case, comparison, clarification, or example.
+- NEW TOPIC: Use this when a follow-up would be forced, repetitive, or add little signal.
+
+A follow-up must be short, directly tied to the answer, and must not repeat or closely
+rephrase the previous question. Do not mention these directions in the output.
+"""
     
     # Build adaptive context if previous performance data is available
     if previous_questions and len(previous_questions) > 0 and previous_evaluations and len(previous_evaluations) > 0:
@@ -173,7 +203,8 @@ Performance summary:
 
 {difficulty_guidance}
 
-CRITICAL: Do not repeat or closely rephrase any of the previous questions. Ask a completely new question that tests a different aspect of the candidate's knowledge.
+CRITICAL: Do not repeat or closely rephrase any previous question. If a follow-up is
+chosen, it must test a deeper aspect of the previous answer rather than restate it.
 """
 
     prompt = f"""
@@ -185,7 +216,7 @@ Job Role: {role}
 Experience Level: {experience}
 Primary Skill: {skill}
 Difficulty: {adjusted_difficulty}
-{resume_guidance}{adaptive_context}
+{resume_guidance}{adaptive_context}{answer_context}
 
 Requirements:
 - Ask only one question.
@@ -237,7 +268,7 @@ Requirements:
                 "Using fallback interview question."
             )
 
-        question = get_fallback_question(skill)
+        question = get_fallback_question(skill, previous_questions)
 
         print("Fallback question:", question)
 
