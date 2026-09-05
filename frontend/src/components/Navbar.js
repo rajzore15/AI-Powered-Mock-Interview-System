@@ -16,6 +16,10 @@ function Navbar() {
         <Link to="/interview">
           Start Interview
         </Link>
+
+        <Link to="/interview-history">
+          Interview History
+        </Link>
       </div>
     </nav>
   );

@@ -36,6 +36,7 @@ const [cameraStream, setCameraStream] = useState(null);
   // ==============================
 
   const interviewData = location.state || {};
+  const interviewIdRef = useRef(interviewData.interviewId || `interview-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
   const role = interviewData.role || "Python Developer";
   const experience = interviewData.experience || "Fresher";
@@ -346,6 +347,8 @@ const stopCamera = () => {
           evaluations: evaluationsRef.current,
           totalQuestions,
           elapsedTime,
+          interviewId: interviewIdRef.current,
+          resumeUsed: Boolean(resumeId),
         },
       });
     } catch (e) {
@@ -553,6 +556,8 @@ const stopCamera = () => {
         evaluations: finalEvaluations,
         totalQuestions,
         elapsedTime,
+        interviewId: interviewIdRef.current,
+        resumeUsed: Boolean(resumeId),
       },
     });
   };

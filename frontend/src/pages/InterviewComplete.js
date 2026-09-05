@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../App.css";
+import { saveInterviewRecord } from "../services/interviewHistory";
 
 const normalizeList = (items) => {
   if (Array.isArray(items)) {
@@ -77,16 +78,19 @@ const formatTime = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, 
 function InterviewComplete() {
   const location = useLocation();
   const navigate = useNavigate();
-  const state = location.state || {};
+  const navigationState = location.state || {};
+  const historicalRecord = navigationState.historyRecord || null;
+  const state = historicalRecord || navigationState;
+  const generatedInterviewId = useRef(`interview-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
   const role = typeof state.role === "string" && state.role.trim() ? state.role.trim() : "Candidate";
   const experience = typeof state.experience === "string" && state.experience.trim() ? state.experience.trim() : "N/A";
   const skill = typeof state.skill === "string" && state.skill.trim() ? state.skill.trim() : "N/A";
   const difficulty = typeof state.difficulty === "string" && state.difficulty.trim() ? state.difficulty.trim() : "N/A";
   const elapsedTime = Number.isFinite(state.elapsedTime) ? state.elapsedTime : 0;
-  const questions = Array.isArray(state.questions) ? state.questions : [];
-  const answers = Array.isArray(state.answers) ? state.answers : [];
-  const evaluations = Array.isArray(state.evaluations) ? state.evaluations : [];
+  const questions = useMemo(() => (Array.isArray(state.questions) ? state.questions : []), [state.questions]);
+  const answers = useMemo(() => (Array.isArray(state.answers) ? state.answers : []), [state.answers]);
+  const evaluations = useMemo(() => (Array.isArray(state.evaluations) ? state.evaluations : []), [state.evaluations]);
 
   const reviewCount = Math.max(questions.length, answers.length, evaluations.length);
   const reviews = Array.from({ length: reviewCount }, (_, index) => ({
@@ -98,10 +102,17 @@ function InterviewComplete() {
   const validReviews = reviews.filter((review) => review.evaluation.hasScore);
   const totalQuestionCount = Math.max(Number.isFinite(state.totalQuestions) ? state.totalQuestions : 0, reviews.length, 1);
   const totalAnswered = reviews.filter((review) => review.answer !== "No answer recorded." || review.evaluation.hasScore).length;
-  const averageScore = totalAnswered ? validReviews.reduce((sum, review) => sum + review.evaluation.score, 0) / totalAnswered : 0;
-  const overallPercent = clampPercentage(averageScore * 10);
-  const performanceLevel = getPerformanceLevel(overallPercent);
-  const scoreLabel = totalAnswered ? `${Math.round(overallPercent)}/100` : "Not scored";
+  const averageScore = validReviews.length ? validReviews.reduce((sum, review) => sum + review.evaluation.score, 0) / validReviews.length : 0;
+  const storedOverallScore = Number(state.overallScore);
+  const overallPercent = historicalRecord && Number.isFinite(storedOverallScore)
+    ? clampPercentage(storedOverallScore)
+    : clampPercentage(averageScore * 10);
+  const performanceLevel = historicalRecord && typeof state.performanceLevel === "string" && state.performanceLevel.trim()
+    ? state.performanceLevel
+    : getPerformanceLevel(overallPercent);
+  const scoreLabel = historicalRecord && Number.isFinite(storedOverallScore)
+    ? `${Math.round(overallPercent)}/100`
+    : totalAnswered ? `${Math.round(overallPercent)}/100` : "Not scored";
 
   const overallStrengths = mergeSimilarItems(
     validReviews.flatMap((review) => review.evaluation.strengths)
@@ -111,9 +122,33 @@ function InterviewComplete() {
     validReviews.flatMap((review) => review.evaluation.areas_to_improve)
   );
 
-  const improvementSuggestions = improvementAreas.length
-    ? improvementAreas
-    : ["Practice structured examples and explain your reasoning with clear, specific details."];
+  const improvementSuggestions = useMemo(() => (
+    improvementAreas.length
+      ? improvementAreas
+      : ["Practice structured examples and explain your reasoning with clear, specific details."]
+  ), [improvementAreas]);
+
+  useEffect(() => {
+    if (historicalRecord) return;
+
+    saveInterviewRecord({
+      id: typeof state.interviewId === "string" && state.interviewId.trim() ? state.interviewId : generatedInterviewId.current,
+      date: new Date().toISOString(),
+      role,
+      experience,
+      skill,
+      difficulty,
+      resumeUsed: Boolean(state.resumeUsed || state.resumeId),
+      overallScore: overallPercent,
+      performanceLevel,
+      questions,
+      answers,
+      evaluations,
+      strengths: overallStrengths,
+      weaknesses: improvementAreas,
+      improvementSuggestions
+    });
+  }, [historicalRecord, state.interviewId, state.resumeId, state.resumeUsed, role, experience, skill, difficulty, overallPercent, performanceLevel, questions, answers, evaluations, overallStrengths, improvementAreas, improvementSuggestions]);
 
   return (
     <div className="interview-complete-page">

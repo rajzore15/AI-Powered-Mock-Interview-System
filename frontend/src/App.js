@@ -9,6 +9,7 @@ import InterviewSetup from "./pages/InterviewSetup";
 import InterviewCheck from "./pages/InterviewCheck";
 import InterviewRoom from "./pages/InterviewRoom";
 import InterviewComplete from "./pages/InterviewComplete";
+import InterviewHistory from "./pages/InterviewHistory";
 
 function App() {
   return (
@@ -41,6 +42,11 @@ function App() {
         <Route
           path="/interview-complete"
           element={<InterviewComplete />}
+        />
+
+        <Route
+          path="/interview-history"
+          element={<InterviewHistory />}
         />
 
       </Routes>
