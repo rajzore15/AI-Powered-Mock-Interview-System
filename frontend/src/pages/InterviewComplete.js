@@ -23,10 +23,12 @@ const normalizeList = (items) => {
 const normalizeEvaluation = (value) => {
   const evaluation = value && typeof value === "object" ? value : {};
   const safeScore = Number(evaluation.score);
-  const score = Number.isFinite(safeScore) && safeScore >= 0 && safeScore <= 10 ? safeScore : 0;
+  const hasScore = Number.isFinite(safeScore) && safeScore >= 0 && safeScore <= 10;
+  const score = hasScore ? safeScore : 0;
 
   return {
     score,
+    hasScore,
     correctness: typeof evaluation.correctness === "string" && evaluation.correctness.trim() ? evaluation.correctness.trim() : "Evaluation unavailable.",
     strengths: normalizeList(evaluation.strengths),
     areas_to_improve: normalizeList(evaluation.areas_to_improve || evaluation.weaknesses || evaluation.improvement_areas),
@@ -86,19 +88,20 @@ function InterviewComplete() {
   const answers = Array.isArray(state.answers) ? state.answers : [];
   const evaluations = Array.isArray(state.evaluations) ? state.evaluations : [];
 
-  const reviews = questions.map((question, index) => ({
-    question: typeof question === "string" && question.trim() ? question.trim() : "Question unavailable.",
+  const reviewCount = Math.max(questions.length, answers.length, evaluations.length);
+  const reviews = Array.from({ length: reviewCount }, (_, index) => ({
+    question: typeof questions[index] === "string" && questions[index].trim() ? questions[index].trim() : "Question unavailable.",
     answer: typeof answers[index] === "string" && answers[index].trim() ? answers[index].trim() : "No answer recorded.",
     evaluation: normalizeEvaluation(evaluations[index])
   }));
 
-  const validReviews = reviews.filter((review) => Number.isFinite(review.evaluation.score) && review.evaluation.score >= 0 && review.evaluation.score <= 10);
-  const totalQuestionCount = Math.max(questions.length || 0, validReviews.length || 0, 1);
-  const totalAnswered = validReviews.length;
+  const validReviews = reviews.filter((review) => review.evaluation.hasScore);
+  const totalQuestionCount = Math.max(Number.isFinite(state.totalQuestions) ? state.totalQuestions : 0, reviews.length, 1);
+  const totalAnswered = reviews.filter((review) => review.answer !== "No answer recorded." || review.evaluation.hasScore).length;
   const averageScore = totalAnswered ? validReviews.reduce((sum, review) => sum + review.evaluation.score, 0) / totalAnswered : 0;
   const overallPercent = clampPercentage(averageScore * 10);
   const performanceLevel = getPerformanceLevel(overallPercent);
-  const scoreLabel = `${Math.round(overallPercent)}/100`;
+  const scoreLabel = totalAnswered ? `${Math.round(overallPercent)}/100` : "Not scored";
 
   const overallStrengths = mergeSimilarItems(
     validReviews.flatMap((review) => review.evaluation.strengths)
@@ -107,6 +110,10 @@ function InterviewComplete() {
   const improvementAreas = mergeSimilarItems(
     validReviews.flatMap((review) => review.evaluation.areas_to_improve)
   );
+
+  const improvementSuggestions = improvementAreas.length
+    ? improvementAreas
+    : ["Practice structured examples and explain your reasoning with clear, specific details."];
 
   return (
     <div className="interview-complete-page">
@@ -179,13 +186,9 @@ function InterviewComplete() {
             <span className="report-label">Areas for improvement</span>
             <h2>Focus areas</h2>
           </div>
-          {improvementAreas.length ? (
-            <ul className="summary-list">
-              {improvementAreas.map((area, index) => <li key={`${area}-${index}`}>{area}</li>)}
-            </ul>
-          ) : (
-            <p className="empty-report">No improvement areas were captured in the available evaluations.</p>
-          )}
+          <ul className="summary-list">
+            {improvementSuggestions.map((suggestion, index) => <li key={`${suggestion}-${index}`}>{suggestion}</li>)}
+          </ul>
         </section>
 
         <section className="question-reviews">
@@ -213,6 +216,16 @@ function InterviewComplete() {
                 <div className="review-answer">
                   <span>Candidate answer</span>
                   <p>{review.answer}</p>
+                </div>
+
+                <div className="review-progress">
+                  <div>
+                    <span>Question score</span>
+                    <strong>{review.evaluation.hasScore ? `${review.evaluation.score}/10` : "Not scored"}</strong>
+                  </div>
+                  <div className="score-progress-bar" aria-label={`Question ${index + 1} score`}>
+                    <span style={{ width: `${scorePercent}%` }} />
+                  </div>
                 </div>
 
                 <div className="review-grid">
@@ -246,11 +259,7 @@ function InterviewComplete() {
 
                   <div className="ideal-answer">
                     <span>Improvement suggestions</span>
-                    {review.evaluation.areas_to_improve.length ? (
-                      <ul>{review.evaluation.areas_to_improve.map((item, itemIndex) => <li key={`${item}-suggestion-${itemIndex}`}>{item}</li>)}</ul>
-                    ) : (
-                      <p>Practice structured examples and clarify your reasoning for stronger answers.</p>
-                    )}
+                    <ul><li>{review.evaluation.areas_to_improve.length ? review.evaluation.areas_to_improve[0] : "Practice structured examples and clarify your reasoning for stronger answers."}</li></ul>
                   </div>
 
                   <div className="ideal-answer">
