@@ -1,25 +1,15 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 function Navbar() {
   return (
-    <nav className="navbar">
-      <div className="logo">
-        AI Mock Interview
-      </div>
+    <nav className="navbar" aria-label="Primary navigation">
+      <NavLink className="logo" to="/" end>AI Mock Interview</NavLink>
 
       <div className="nav-links">
-        <Link to="/">
-          Home
-        </Link>
-
-        <Link to="/interview">
-          Start Interview
-        </Link>
-
-        <Link to="/interview-history">
-          Interview History
-        </Link>
+        <NavLink to="/" end>Home</NavLink>
+        <NavLink to="/interview">Start Interview</NavLink>
+        <NavLink to="/interview-history">Interview History</NavLink>
       </div>
     </nav>
   );
